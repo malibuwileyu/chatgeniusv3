@@ -1,42 +1,40 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface User {
+export interface User {
     id: string;
     username: string;
-    fullName: string;
-    status: string;
+    full_name: string;
+    avatar_url?: string;
 }
 
-interface Attachment {
+export interface Attachment {
     id: string;
-    fileUrl: string;
-    fileType: string;
-    fileName: string;
-    fileSize: number;
+    file_url: string;
+    file_type: string;
+    file_name: string;
+    file_size: number;
 }
 
-interface Message {
+export interface Message {
     id: string;
     content: string;
     type: 'text' | 'file' | 'ai' | 'system';
+    channel_id: string;
+    thread_id?: string;
     user: User;
-    channelId: string;
-    threadId?: string;
     attachments: Attachment[];
-    createdAt: string;
-    updatedAt: string;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface MessageState {
     messages: Message[];
-    threadMessages: Message[];
     loading: boolean;
     error: string | null;
 }
 
 const initialState: MessageState = {
     messages: [],
-    threadMessages: [],
     loading: false,
     error: null
 };
@@ -47,45 +45,32 @@ const messageSlice = createSlice({
     reducers: {
         setMessages: (state, action: PayloadAction<Message[]>) => {
             state.messages = action.payload;
-        },
-        setThreadMessages: (state, action: PayloadAction<Message[]>) => {
-            state.threadMessages = action.payload;
+            state.error = null;
         },
         addMessage: (state, action: PayloadAction<Message>) => {
-            if (action.payload.threadId) {
-                state.threadMessages.push(action.payload);
-            } else {
-                state.messages.push(action.payload);
-            }
+            state.messages.push(action.payload);
         },
         updateMessage: (state, action: PayloadAction<Message>) => {
-            const isThreadMessage = action.payload.threadId;
-            const messages = isThreadMessage ? state.threadMessages : state.messages;
-            const index = messages.findIndex(m => m.id === action.payload.id);
+            const index = state.messages.findIndex(m => m.id === action.payload.id);
             if (index !== -1) {
-                messages[index] = action.payload;
+                state.messages[index] = action.payload;
             }
         },
-        deleteMessage: (state, action: PayloadAction<{ id: string; threadId?: string }>) => {
-            const isThreadMessage = action.payload.threadId;
-            const messages = isThreadMessage ? state.threadMessages : state.messages;
-            const index = messages.findIndex(m => m.id === action.payload.id);
-            if (index !== -1) {
-                messages.splice(index, 1);
-            }
+        deleteMessage: (state, action: PayloadAction<string>) => {
+            state.messages = state.messages.filter(m => m.id !== action.payload);
         },
         setLoading: (state, action: PayloadAction<boolean>) => {
             state.loading = action.payload;
         },
         setError: (state, action: PayloadAction<string | null>) => {
             state.error = action.payload;
+            state.loading = false;
         }
     }
 });
 
 export const {
     setMessages,
-    setThreadMessages,
     addMessage,
     updateMessage,
     deleteMessage,

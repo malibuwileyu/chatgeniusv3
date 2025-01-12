@@ -10,7 +10,7 @@ import {
     IconButton
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Outlet } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import ChannelList from '../channels/ChannelList';
 
@@ -82,17 +82,11 @@ const HomePage = () => {
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: 3,
                     width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
                     mt: 8
                 }}
             >
-                <Typography variant="h4" gutterBottom align="center">
-                    Welcome to ChatGenius
-                </Typography>
-                <Typography variant="body1" align="center">
-                    Start chatting by selecting a channel from the sidebar.
-                </Typography>
+                <Outlet />
             </Box>
         </Box>
     );
