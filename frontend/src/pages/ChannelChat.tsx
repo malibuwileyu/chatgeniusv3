@@ -1,23 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import MessageList from '../components/messages/MessageList';
 import MessageInput from '../components/messages/MessageInput';
 import RightSidebar from '../components/chat/RightSidebar';
 
-const ChannelChat = () => {
-    const { id } = useParams();
-    const [showPresence, setShowPresence] = useState(false);
+const ChannelChat: React.FC = () => {
+    const { id } = useParams<{ id: string }>();
+    const [showPresence, setShowPresence] = useState(true);
     const [showSearch, setShowSearch] = useState(false);
 
-    const handlePresenceClick = () => {
+    useEffect(() => {
         setShowPresence(true);
+        setShowSearch(false);
+    }, [id]);
+
+    const handlePresenceClick = () => {
+        setShowPresence(prev => !prev);
         setShowSearch(false);
     };
 
     const handleSearchClick = () => {
         setShowPresence(false);
-        setShowSearch(true);
+        setShowSearch(prev => !prev);
     };
 
     if (!id) return null;
@@ -44,6 +49,9 @@ const ChannelChat = () => {
             <RightSidebar 
                 onPresenceClick={handlePresenceClick}
                 onSearchClick={handleSearchClick}
+                showPresence={showPresence}
+                showSearch={showSearch}
+                channelId={id}
             />
         </Box>
     );
