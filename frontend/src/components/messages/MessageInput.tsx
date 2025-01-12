@@ -113,15 +113,11 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
     return (
         <Box 
             sx={{ 
-                position: 'fixed',
-                bottom: 0,
-                right: 0,
-                left: { xs: 0, md: 240 }, // Adjust based on sidebar width
                 p: 2,
                 borderTop: 1,
                 borderColor: 'divider',
                 bgcolor: 'background.paper',
-                zIndex: 1
+                flexShrink: 0 // Prevent input from shrinking
             }}
         >
             <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>

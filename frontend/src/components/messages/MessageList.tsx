@@ -39,6 +39,7 @@ const MessageList = ({ channelId }: MessageListProps) => {
                 backgroundColor: 'background.default',
                 px: 2,
                 py: 2,
+                height: '100%',
                 '&::-webkit-scrollbar': {
                     width: '8px',
                 },
@@ -59,7 +60,8 @@ const MessageList = ({ channelId }: MessageListProps) => {
                 flexDirection: 'column',
                 gap: 2,
                 width: '100%',
-                pr: 1
+                pr: 1,
+                marginTop: 'auto'
             }}>
                 {messages.map((message: MessageType) => (
                     <Message
