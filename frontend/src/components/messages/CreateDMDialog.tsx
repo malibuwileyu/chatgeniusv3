@@ -100,6 +100,20 @@ const CreateDMDialog: React.FC<CreateDMDialogProps> = ({ open, onClose }) => {
 
                 if (createError) throw createError;
                 channelId = newChannel.id;
+
+                // Add both users as members
+                const memberPromises = [
+                    supabase
+                        .from('channel_members')
+                        .insert({ channel_id: channelId, user_id: currentUser.id, role: 'member' }),
+                    supabase
+                        .from('channel_members')
+                        .insert({ channel_id: channelId, user_id: selectedUserId, role: 'member' })
+                ];
+
+                const results = await Promise.all(memberPromises);
+                const errors = results.filter(r => r.error).map(r => r.error);
+                if (errors.length > 0) throw errors[0];
             }
 
             onClose();

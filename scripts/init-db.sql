@@ -21,7 +21,9 @@ CREATE TABLE channels (
   description TEXT,
   type VARCHAR(20) NOT NULL CHECK (type IN ('public', 'private', 'dm')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  last_message_at TIMESTAMP WITH TIME ZONE,
+  user_ids UUID[] DEFAULT '{}'::UUID[]
 );
 
 -- Channel members table
