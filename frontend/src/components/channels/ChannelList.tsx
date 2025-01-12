@@ -21,6 +21,7 @@ import {
     Add as AddIcon
 } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../store/store';
 import useChannels from '../../hooks/useChannels';
 
@@ -36,11 +37,20 @@ const ChannelList: React.FC<ChannelListProps> = ({
     drawerWidth = 240
 }) => {
     const theme = useTheme();
+    const navigate = useNavigate();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { channels, loading, error } = useSelector((state: RootState) => state.channels);
 
     // Initialize channel fetching
     useChannels();
+
+    const handleChannelClick = (channelId: string) => {
+        console.log('Channel clicked:', channelId);
+        navigate(`/channels/${channelId}`);
+        if (isMobile) {
+            handleDrawerToggle();
+        }
+    };
 
     const channelList = loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
@@ -66,7 +76,7 @@ const ChannelList: React.FC<ChannelListProps> = ({
     ) : (
         channels.map((channel) => (
             <ListItem key={channel.id} disablePadding>
-                <ListItemButton>
+                <ListItemButton onClick={() => handleChannelClick(channel.id)}>
                     <ListItemIcon>
                         {channel.type === 'private' ? <LockIcon /> : <TagIcon />}
                     </ListItemIcon>
