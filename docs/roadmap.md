@@ -10,11 +10,20 @@
 - [x] Create homepage layout (2024-01-12 17:00 EST)
 - [x] Implement channel list (2024-01-12 19:00 EST)
 - [x] Connect to Supabase for real-time updates (2024-01-12 19:00 EST)
-- [ ] Create message components
-- [ ] Add file upload UI
-- [ ] Implement message search UI
-- [ ] Add user presence indicators
+- [x] Create message components (2024-01-13 01:30 EST)
+- [x] Implement basic chat layout (2024-01-13 01:30 EST)
+- [x] Add file upload UI (2024-01-13 01:30 EST)
+- [x] Implement message search UI (2024-01-13 02:30 EST)
+- [x] Add user presence UI (2024-01-13 02:30 EST)
 - [ ] Create emoji reaction UI
+
+## Non-MVP Todo
+- [ ] Fix chat message right side cutoff issue
+- [ ] Add channel creation UI
+- [ ] Implement channel deletion with confirmation
+- [ ] Create channel settings modal (name, description, permissions)
+- [ ] Add channel member management
+- [ ] Add message highlighting and scrolling to message when clicked in search results
 
 ## Backend Development
 - [x] Set up Express server with TypeScript (2024-01-12 17:00 EST)
