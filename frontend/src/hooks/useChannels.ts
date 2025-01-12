@@ -3,14 +3,6 @@ import { useDispatch } from 'react-redux';
 import { setChannels, setLoading, setError, Channel } from '../store/slices/channelSlice';
 import { supabase } from '../services/supabase';
 
-interface SupabaseChannel {
-    id: string;
-    name: string;
-    type: 'public' | 'private';
-    description?: string;
-    created_at: string;
-}
-
 const useChannels = () => {
     const dispatch = useDispatch();
 
@@ -24,7 +16,7 @@ const useChannels = () => {
                     .from('channels')
                     .select('*')
                     .order('created_at', { ascending: true })
-                    .returns<SupabaseChannel[]>();
+                    .returns<Channel[]>();
 
                 if (error) {
                     console.error('Supabase error:', error);
@@ -33,11 +25,6 @@ const useChannels = () => {
                 }
 
                 console.log('Channels fetched:', channels);
-                if (!channels || channels.length === 0) {
-                    console.log('No channels found');
-                } else {
-                    console.log('Channel IDs:', channels.map(c => c.id));
-                }
                 dispatch(setChannels(channels || []));
             } catch (error: any) {
                 console.error('Error in useChannels:', error);
@@ -49,6 +36,41 @@ const useChannels = () => {
         };
 
         fetchChannels();
+
+        // Subscribe to channel changes
+        const subscription = supabase
+            .channel('channel-changes')
+            .on('postgres_changes', {
+                event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+                schema: 'public',
+                table: 'channels'
+            }, async (payload) => {
+                console.log('Channel change received:', payload);
+                
+                // Refetch all channels to ensure we have the latest state
+                // This is simpler than trying to merge changes, especially for updates and deletes
+                const { data: channels, error } = await supabase
+                    .from('channels')
+                    .select('*')
+                    .order('created_at', { ascending: true })
+                    .returns<Channel[]>();
+
+                if (error) {
+                    console.error('Error refetching channels:', error);
+                    return;
+                }
+
+                dispatch(setChannels(channels || []));
+            })
+            .subscribe((status) => {
+                console.log('Channel subscription status:', status);
+            });
+
+        // Cleanup subscription on unmount
+        return () => {
+            console.log('Cleaning up channel subscription');
+            subscription.unsubscribe();
+        };
     }, [dispatch]);
 };
 

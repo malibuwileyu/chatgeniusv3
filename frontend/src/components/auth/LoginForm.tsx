@@ -6,33 +6,29 @@ import {
     Button,
     Typography,
     Container,
-    Alert,
-    Paper
+    Paper,
+    Link,
+    Alert
 } from '@mui/material';
 import useAuth from '../../hooks/useAuth';
 
 const LoginForm = () => {
     const navigate = useNavigate();
     const { login, error } = useAuth();
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
-    };
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         try {
-            await login(formData.email, formData.password);
+            await login(email, password);
             navigate('/');
-        } catch (err) {
-            // Error is handled by the auth hook
+        } catch (error) {
+            console.error('Login error:', error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -40,39 +36,32 @@ const LoginForm = () => {
         <Box
             sx={{
                 minHeight: '100vh',
-                width: '100vw',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                bgcolor: 'background.default',
-                margin: 0,
-                padding: 0
+                bgcolor: 'background.default'
             }}
         >
-            <Container 
-                maxWidth="xs" 
-                sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                }}
-            >
+            <Container component="main" maxWidth="xs">
                 <Paper
                     elevation={3}
                     sx={{
-                        p: 4,
-                        width: '100%',
+                        padding: 4,
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
+                        width: '100%',
                     }}
                 >
-                    <Typography component="h1" variant="h5" sx={{ mb: 3 }}>
-                        Sign in to ChatGenius
+                    <Typography component="h1" variant="h5" gutterBottom>
+                        Sign In
                     </Typography>
-                    <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-                        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                    {error && (
+                        <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
+                            {error}
+                        </Alert>
+                    )}
+                    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
                         <TextField
                             margin="normal"
                             required
@@ -82,8 +71,8 @@ const LoginForm = () => {
                             name="email"
                             autoComplete="email"
                             autoFocus
-                            value={formData.email}
-                            onChange={handleChange}
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                         />
                         <TextField
                             margin="normal"
@@ -94,17 +83,23 @@ const LoginForm = () => {
                             type="password"
                             id="password"
                             autoComplete="current-password"
-                            value={formData.password}
-                            onChange={handleChange}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
                         />
                         <Button
                             type="submit"
                             fullWidth
                             variant="contained"
-                            sx={{ mt: 3, mb: 2, py: 1.5 }}
+                            sx={{ mt: 3, mb: 2 }}
+                            disabled={isSubmitting}
                         >
                             Sign In
                         </Button>
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Link href="/register" variant="body2">
+                                Don't have an account? Sign up
+                            </Link>
+                        </Box>
                     </Box>
                 </Paper>
             </Container>

@@ -15,6 +15,7 @@
 - [x] Add file upload UI (2024-01-13 01:30 EST)
 - [x] Implement message search UI (2024-01-13 02:30 EST)
 - [x] Add user presence UI (2024-01-13 02:30 EST)
+- [x] Add DM creation and navigation (2024-01-13 03:30 EST)
 - [ ] Create emoji reaction UI
 - [ ] Add file preview/download UI
 - [ ] Implement typing indicators
@@ -30,6 +31,8 @@
 - [ ] Create channel settings modal (name, description, permissions)
 - [ ] Add channel member management
 - [ ] Add message highlighting and scrolling to message when clicked in search results
+- [ ] Implement "move to top" functionality for existing DMs
+- [ ] Add registration screen accessible from login
 
 ## Backend Development
 - [x] Set up Express server with TypeScript (2024-01-12 17:00 EST)

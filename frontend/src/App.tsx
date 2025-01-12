@@ -9,6 +9,7 @@ import Welcome from './components/home/Welcome';
 import ChannelChat from './pages/ChannelChat';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { Box } from '@mui/material';
+import RegisterForm from './components/auth/RegisterForm';
 
 const App = () => {
     return (
@@ -25,6 +26,7 @@ const App = () => {
                     <Router>
                         <Routes>
                             <Route path="/login" element={<LoginForm />} />
+                            <Route path="/register" element={<RegisterForm />} />
                             <Route
                                 path="/"
                                 element={

@@ -3,8 +3,9 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export interface Channel {
     id: string;
     name: string;
-    type: 'public' | 'private';
+    type: 'public' | 'private' | 'dm';
     created_at: string;
+    user_ids?: string[];
 }
 
 export interface ChannelState {
