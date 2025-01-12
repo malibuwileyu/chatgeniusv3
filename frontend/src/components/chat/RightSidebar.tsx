@@ -9,6 +9,9 @@ import { RootState } from '../../store/store';
 interface RightSidebarProps {
     onPresenceClick: () => void;
     onSearchClick: () => void;
+    showPresence: boolean;
+    showSearch: boolean;
+    channelId: string;
 }
 
 // Dummy data for presence
