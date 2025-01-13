@@ -7,6 +7,7 @@ import LoginForm from './components/auth/LoginForm';
 import HomePage from './components/home/HomePage';
 import Welcome from './components/home/Welcome';
 import ChannelChat from './pages/ChannelChat';
+import ChannelSelection from './pages/ChannelSelection';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { Box } from '@mui/material';
 import RegisterForm from './components/auth/RegisterForm';
@@ -37,6 +38,7 @@ const App = () => {
                             >
                                 <Route index element={<Welcome />} />
                                 <Route path="channels/:id" element={<ChannelChat />} />
+                                <Route path="browse-channels" element={<ChannelSelection />} />
                             </Route>
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>

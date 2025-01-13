@@ -136,6 +136,7 @@ const ChannelList = ({ mobileOpen, handleDrawerToggle, drawerWidth }: ChannelLis
                     variant="text"
                     fullWidth
                     sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}
+                    onClick={() => navigate('/browse-channels')}
                 >
                     Browse Channels
                 </Button>

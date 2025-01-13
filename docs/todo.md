@@ -5,13 +5,13 @@
 - [ ] Add message threading
 - [ ] Add message editing
 - [ ] Add message search
-- [ ] Add file upload progress tracking with XMLHttpRequest or fetch API
-- [ ] Fix realtime message deletion to work instantly across all clients
+- [x] Add file upload progress tracking with XMLHttpRequest or fetch API (2024-01-17 15:00 EST)
+- [x] Fix realtime message deletion to work instantly across all clients (2024-01-17 16:00 EST)
 - [ ] Add user presence indicators
 - [ ] Add user status messages
 - [ ] Add user avatars
 - [ ] Add user profiles
 - [ ] Add user settings
-- [ ] Add channel settings
-- [ ] Add channel invites
-- [ ] Add channel roles and permissions 
+- [x] Add channel settings (2024-01-17 17:00 EST)
+- [x] Add channel invites (2024-01-17 17:00 EST)
+- [x] Add channel roles and permissions (2024-01-17 17:00 EST) 

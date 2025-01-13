@@ -15,8 +15,12 @@ const useChannels = () => {
             const [regularResponse, dmResponse] = await Promise.all([
                 supabase
                     .from('channels')
-                    .select('*')
+                    .select(`
+                        *,
+                        channel_members!inner (user_id)
+                    `)
                     .neq('type', 'dm')
+                    .eq('channel_members.user_id', currentUser?.id)
                     .order('created_at', { ascending: true }),
                 supabase
                     .from('channels')
@@ -51,13 +55,20 @@ const useChannels = () => {
         dispatch(setLoading(true));
         fetchAndSortChannels();
 
-        // Subscribe to channel changes
+        // Subscribe to both channel and channel_members changes
         const subscription = supabase
             .channel('channel-changes')
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
                 table: 'channels'
+            }, async () => {
+                await fetchAndSortChannels();
+            })
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'channel_members'
             }, async () => {
                 await fetchAndSortChannels();
             })

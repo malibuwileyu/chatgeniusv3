@@ -17,19 +17,19 @@
 - [x] Add user presence UI (2024-01-13 02:30 EST)
 - [x] Add DM creation and navigation (2024-01-13 03:30 EST)
 - [ ] Create emoji reaction UI
-- [ ] Add file preview/download UI
+- [x] Add file preview/download UI (2024-01-17 15:00 EST)
 - [ ] Implement typing indicators
 - [ ] Add search result highlighting
 - [ ] Add online/offline indicators
-- [ ] Implement file upload progress UI
+- [x] Implement file upload progress UI (2024-01-17 15:00 EST)
 - [ ] Add real-time reaction updates
 
 ## Non-MVP Todo
-- [ ] Fix chat message right side cutoff issue
+- [x] Fix chat message right side cutoff issue (2024-01-17 16:00 EST)
 - [x] Add channel creation UI (2024-01-13 03:00 EST)
 - [x] Implement channel deletion with confirmation (2024-01-13 05:30 EST)
 - [x] Create channel settings modal (name, description, permissions) (2024-01-13 05:30 EST)
-- [ ] Add channel member management
+- [x] Add channel member management (2024-01-17 17:00 EST)
 - [ ] Add message highlighting and scrolling to message when clicked in search results
 - [ ] Implement "move to top" functionality for existing DMs
 - [ ] Add registration screen accessible from login
@@ -44,9 +44,9 @@
 - [x] Implement channel CRUD operations (2024-01-12 20:30 EST)
 - [x] Add reaction endpoints (2024-01-12 20:30 EST)
 - [x] Create file upload/download endpoints (structure only) (2024-01-12 20:30 EST)
-- [ ] Implement file storage with Supabase
-  - [ ] Configure storage buckets
-  - [ ] Set up file access controls
+- [x] Implement file storage with Supabase (2024-01-17 15:00 EST)
+  - [x] Configure storage buckets (2024-01-17 15:00 EST)
+  - [x] Set up file access controls (2024-01-17 15:00 EST)
   - [ ] Add file versioning
   - [ ] Implement cleanup routines
 - [ ] Add real-time message updates with WebSocket
@@ -75,17 +75,18 @@
   - [ ] Add content indexing
   - [ ] Configure search weights
   - [ ] Add metadata indexing
-- [ ] Add file metadata table
-  - [ ] Create file schema
+- [x] Add file metadata table (2024-01-17 15:00 EST)
+  - [x] Create file schema (2024-01-17 15:00 EST)
+  - [x] Set up access controls (2024-01-17 15:00 EST)
   - [ ] Add version tracking
-  - [ ] Set up access controls
   - [ ] Add file relationships
 - [ ] Set up presence tracking table
   - [ ] Add heartbeat columns
   - [ ] Create status tracking
   - [ ] Set up session management
   - [ ] Add timeout handling
-- [ ] Add DM table and relationships
+- [x] Add DM table and relationships (2024-01-17 14:00 EST)
+- [x] Create file storage structure (2024-01-17 15:00 EST)
 - [ ] Create thread relationships
 - [ ] Add reaction table
 - [ ] Add user status table

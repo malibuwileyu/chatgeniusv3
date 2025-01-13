@@ -14,6 +14,8 @@ import {
     Box
 } from '@mui/material';
 import { supabase } from '../../services/supabase';
+import { useAppSelector } from '../../store/hooks';
+import { RootState } from '../../store/store';
 
 interface CreateChannelDialogProps {
     open: boolean;
@@ -25,22 +27,42 @@ const CreateChannelDialog: React.FC<CreateChannelDialogProps> = ({ open, onClose
     const [type, setType] = useState<'public' | 'private'>('public');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const currentUser = useAppSelector((state: RootState) => state.auth.user);
 
     const handleSubmit = async () => {
-        if (!name.trim() || (type === 'private' && !password.trim())) return;
+        if (!name.trim() || (type === 'private' && !password.trim()) || !currentUser) return;
         
         setIsSubmitting(true);
         try {
-            const { error } = await supabase
+            // Create the channel
+            const { data: channel, error: channelError } = await supabase
                 .from('channels')
                 .insert({
                     name: name.trim(),
                     type,
-                    description: type === 'private' ? password : null
+                    description: type === 'private' ? password : null,
+                    created_by: currentUser.id
+                })
+                .select()
+                .single();
+
+            if (channelError) throw channelError;
+
+            // Add the creator as a member with admin role
+            const { error: memberError } = await supabase
+                .from('channel_members')
+                .insert({
+                    channel_id: channel.id,
+                    user_id: currentUser.id,
+                    role: 'admin'
                 });
 
-            if (error) throw error;
+            if (memberError) throw memberError;
+
             onClose();
+            setName('');
+            setType('public');
+            setPassword('');
         } catch (error) {
             console.error('Error creating channel:', error);
         } finally {
