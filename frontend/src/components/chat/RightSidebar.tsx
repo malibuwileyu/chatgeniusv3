@@ -50,7 +50,9 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ showPresence, showSe
               <ListItem key={user.user_id}>
                 <ListItemAvatar>
                   <Box position="relative">
-                    <Avatar />
+                    <Avatar src={user.avatar_url}>
+                      {user.full_name?.[0] || user.username?.[0]}
+                    </Avatar>
                     <Box
                       sx={{
                         width: 12,
@@ -67,8 +69,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ showPresence, showSe
                   </Box>
                 </ListItemAvatar>
                 <ListItemText 
-                  primary={user.user_id}
-                  secondary={user.custom_status || "Active now"}
+                  primary={user.full_name || user.username}
+                  secondary={user.username && user.full_name ? `@${user.username}` : user.custom_status || "Active now"}
                 />
               </ListItem>
             ))}
@@ -86,7 +88,9 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ showPresence, showSe
                 <ListItem key={user.user_id}>
                   <ListItemAvatar>
                     <Box position="relative">
-                      <Avatar />
+                      <Avatar src={user.avatar_url}>
+                        {user.full_name?.[0] || user.username?.[0]}
+                      </Avatar>
                       <Box
                         sx={{
                           width: 12,
@@ -103,8 +107,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ showPresence, showSe
                     </Box>
                   </ListItemAvatar>
                   <ListItemText 
-                    primary={user.user_id}
-                    secondary={formatLastSeen(user.last_seen)}
+                    primary={user.full_name || user.username}
+                    secondary={user.username && user.full_name ? `@${user.username}` : formatLastSeen(user.last_seen)}
                   />
                 </ListItem>
               ))}
@@ -121,11 +125,13 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ showPresence, showSe
             {offlineUsers.map((user) => (
               <ListItem key={user.user_id}>
                 <ListItemAvatar>
-                  <Avatar sx={{ opacity: 0.5 }} />
+                  <Avatar sx={{ opacity: 0.5 }} src={user.avatar_url}>
+                    {user.full_name?.[0] || user.username?.[0]}
+                  </Avatar>
                 </ListItemAvatar>
                 <ListItemText 
-                  primary={user.user_id}
-                  secondary={formatLastSeen(user.last_seen)}
+                  primary={user.full_name || user.username}
+                  secondary={user.username && user.full_name ? `@${user.username}` : formatLastSeen(user.last_seen)}
                   sx={{ opacity: 0.7 }}
                 />
               </ListItem>

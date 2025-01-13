@@ -8,6 +8,9 @@ export interface PresenceData {
   status: 'online' | 'offline' | 'away';
   last_seen: string;
   custom_status?: string;
+  username?: string;
+  full_name?: string;
+  avatar_url?: string;
 }
 
 export const usePresence = (channelId: string) => {
@@ -27,6 +30,20 @@ export const usePresence = (channelId: string) => {
           .eq('channel_id', channelId);
 
         if (membersError) throw membersError;
+
+        // Fetch user information for all members
+        const { data: users, error: usersError } = await supabase
+          .from('users')
+          .select('id, username, full_name, avatar_url')
+          .in('id', members.map(m => m.user_id));
+
+        if (usersError) throw usersError;
+
+        // Create a map of user information
+        const userMap = users.reduce((acc, user) => {
+          acc[user.id] = user;
+          return acc;
+        }, {} as Record<string, any>);
 
         // Initialize presence records for all members
         const presencePromises = members.map(async (member) => {
@@ -52,8 +69,15 @@ export const usePresence = (channelId: string) => {
 
         if (presenceError) throw presenceError;
 
+        // Combine presence data with user information
         const presenceMap = presenceRecords.reduce((acc, record) => {
-          acc[record.user_id] = record;
+          const user = userMap[record.user_id];
+          acc[record.user_id] = {
+            ...record,
+            username: user?.username,
+            full_name: user?.full_name,
+            avatar_url: user?.avatar_url
+          };
           return acc;
         }, {} as Record<string, PresenceData>);
 
@@ -73,12 +97,27 @@ export const usePresence = (channelId: string) => {
         event: '*',
         schema: 'public',
         table: 'presence'
-      }, (payload: RealtimePostgresChangesPayload<PresenceData>) => {
+      }, async (payload: RealtimePostgresChangesPayload<PresenceData>) => {
         const newData = payload.new as PresenceData;
-        setPresenceData(prev => ({
-          ...prev,
-          [newData.user_id]: newData
-        }));
+        
+        // Fetch user information for the updated presence
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('username, full_name, avatar_url')
+          .eq('id', newData.user_id)
+          .single();
+
+        if (!userError && userData) {
+          setPresenceData(prev => ({
+            ...prev,
+            [newData.user_id]: {
+              ...newData,
+              username: userData.username,
+              full_name: userData.full_name,
+              avatar_url: userData.avatar_url
+            }
+          }));
+        }
       })
       .subscribe();
 
