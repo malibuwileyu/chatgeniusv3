@@ -1,6 +1,14 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { setMessages, addMessage, setLoading, setError, Message } from '../store/slices/messageSlice';
+import { 
+    setMessages, 
+    addMessage, 
+    deleteMessage, 
+    updateMessage,
+    setLoading, 
+    setError, 
+    Message 
+} from '../store/slices/messageSlice';
 import { supabase } from '../services/supabase';
 
 interface SupabaseMessage {
@@ -86,17 +94,36 @@ const useMessages = (channelId: string) => {
 
         fetchMessages();
 
-        // Subscribe to new messages
-        const subscription = supabase
-            .channel(`messages:${channelId}`)
+        // Subscribe to new messages and deletions
+        const channel = supabase.channel(`messages:${channelId}`, {
+            config: {
+                broadcast: { self: true },
+                presence: { key: '' },
+            },
+        });
+
+        const subscription = channel
+            .on('postgres_changes', {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'messages',
+                filter: `channel_id=eq.${channelId}`
+            }, (payload) => {
+                console.log('Delete event received:', payload);
+                if (payload.old && payload.old.id) {
+                    console.log('Dispatching delete for message:', payload.old.id);
+                    dispatch(deleteMessage(payload.old.id));
+                }
+            })
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
                 table: 'messages',
                 filter: `channel_id=eq.${channelId}`
             }, async (payload) => {
-                console.log('New message received:', payload);
-                
+                console.log('Insert event received:', payload);
+                if (!payload.new) return;
+
                 // Fetch the complete message with user and attachments
                 const { data: message, error } = await supabase
                     .from('messages')
@@ -139,10 +166,12 @@ const useMessages = (channelId: string) => {
                     dispatch(addMessage(typedMessage));
                 }
             })
-            .subscribe();
+            .subscribe((status) => {
+                console.log(`Subscription status for channel messages:${channelId}:`, status);
+            });
 
         return () => {
-            console.log('Cleaning up messages subscription');
+            console.log(`Unsubscribing from channel messages:${channelId}`);
             subscription.unsubscribe();
         };
     }, [channelId, dispatch]);

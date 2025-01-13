@@ -2,9 +2,12 @@ import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { setChannels, setLoading, setError, Channel } from '../store/slices/channelSlice';
 import { supabase } from '../services/supabase';
+import { useAppSelector } from '../store/hooks';
+import { RootState } from '../store/store';
 
 const useChannels = () => {
     const dispatch = useDispatch();
+    const currentUser = useAppSelector((state: RootState) => state.auth.user);
 
     const fetchAndSortChannels = async () => {
         try {
@@ -19,6 +22,8 @@ const useChannels = () => {
                     .from('channels')
                     .select('*')
                     .eq('type', 'dm')
+                    // Only fetch DMs where the current user is a participant
+                    .contains('user_ids', [currentUser?.id])
                     .order('last_message_at', { ascending: false, nullsFirst: false })
             ]);
 
@@ -41,6 +46,8 @@ const useChannels = () => {
     };
 
     useEffect(() => {
+        if (!currentUser) return; // Don't fetch if no user is logged in
+        
         dispatch(setLoading(true));
         fetchAndSortChannels();
 
@@ -81,7 +88,7 @@ const useChannels = () => {
             subscription.unsubscribe();
             messageSubscription.unsubscribe();
         };
-    }, [dispatch]);
+    }, [dispatch, currentUser]);
 };
 
 export default useChannels; 

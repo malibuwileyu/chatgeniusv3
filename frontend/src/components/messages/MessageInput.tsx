@@ -127,8 +127,11 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
     return (
         <Box 
             sx={{ 
-                p: 2,
+                pl: 2,
+                pr: 4,
+                py: 2,
                 borderTop: 1,
+                borderRight: 1,
                 borderColor: 'divider',
                 bgcolor: 'background.paper',
                 flexShrink: 0

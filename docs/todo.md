@@ -1,0 +1,17 @@
+### Non-MVP Features
+- [ ] Add typing indicators
+- [ ] Add read receipts
+- [ ] Add message reactions
+- [ ] Add message threading
+- [ ] Add message editing
+- [ ] Add message search
+- [ ] Add file upload progress tracking with XMLHttpRequest or fetch API
+- [ ] Fix realtime message deletion to work instantly across all clients
+- [ ] Add user presence indicators
+- [ ] Add user status messages
+- [ ] Add user avatars
+- [ ] Add user profiles
+- [ ] Add user settings
+- [ ] Add channel settings
+- [ ] Add channel invites
+- [ ] Add channel roles and permissions 

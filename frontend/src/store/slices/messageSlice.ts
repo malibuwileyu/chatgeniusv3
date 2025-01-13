@@ -57,7 +57,13 @@ const messageSlice = createSlice({
             }
         },
         deleteMessage: (state, action: PayloadAction<string>) => {
-            state.messages = state.messages.filter(m => m.id !== action.payload);
+            console.log('Deleting message from state:', action.payload);
+            state.messages = state.messages.filter(message => {
+                const keep = message.id !== action.payload;
+                console.log(`Message ${message.id}: ${keep ? 'keeping' : 'removing'}`);
+                return keep;
+            });
+            console.log('Updated messages count:', state.messages.length);
         },
         setLoading: (state, action: PayloadAction<boolean>) => {
             state.loading = action.payload;

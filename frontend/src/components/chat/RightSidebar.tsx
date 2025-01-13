@@ -5,6 +5,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import { useAppSelector } from '../../store/hooks';
 import { RootState } from '../../store/store';
+import FilePreview from '../messages/FilePreview';
 
 interface RightSidebarProps {
     onPresenceClick: () => void;
@@ -27,25 +28,27 @@ const offlineUsers = [
     { id: 6, name: 'Frank Miller', avatar: 'F', lastSeen: '1 day ago' }
 ];
 
-const RightSidebar = ({ onPresenceClick, onSearchClick }: RightSidebarProps) => {
+const RightSidebar = ({ onPresenceClick, onSearchClick, showPresence, showSearch, channelId }: RightSidebarProps) => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [showSearch, setShowSearch] = useState(false);
-    const [showPresence, setShowPresence] = useState(true);
     const messages = useAppSelector((state: RootState) => state.messages.messages);
     
-    const filteredMessages = searchQuery.trim() ? messages.filter(message => 
-        message.content.toLowerCase().includes(searchQuery.toLowerCase())
-    ) : [];
+    const filteredMessages = searchQuery.trim() ? messages.filter(message => {
+        // Search in message content
+        const contentMatch = message.content.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        // Search in file attachments if message is a file type
+        const attachmentMatch = message.type === 'file' && message.attachments?.some(attachment => 
+            attachment.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        
+        return contentMatch || attachmentMatch;
+    }) : [];
 
     const handlePresenceClick = () => {
-        setShowPresence(true);
-        setShowSearch(false);
         onPresenceClick();
     };
 
     const handleSearchClick = () => {
-        setShowPresence(false);
-        setShowSearch(true);
         onSearchClick();
     };
 
@@ -92,7 +95,7 @@ const RightSidebar = ({ onPresenceClick, onSearchClick }: RightSidebarProps) => 
                         <TextField
                             fullWidth
                             size="small"
-                            placeholder="Search messages..."
+                            placeholder="Search messages and files..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             InputProps={{
@@ -116,35 +119,80 @@ const RightSidebar = ({ onPresenceClick, onSearchClick }: RightSidebarProps) => 
                                                 alignItems: 'flex-start',
                                                 bgcolor: 'background.default',
                                                 borderRadius: 1,
-                                                mb: 1
+                                                mb: 1,
+                                                maxWidth: '100%',
+                                                overflow: 'hidden'
                                             }}
                                         >
-                                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, width: '100%' }}>
+                                            <Box sx={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                mb: 1, 
+                                                width: '100%',
+                                                minWidth: 0 // Allow flex child to shrink
+                                            }}>
                                                 <ListItemAvatar>
                                                     <Avatar>{message.user?.full_name?.charAt(0) || 'U'}</Avatar>
                                                 </ListItemAvatar>
                                                 <ListItemText
                                                     primary={message.user?.full_name || 'Unknown User'}
                                                     secondary={new Date(message.created_at).toLocaleString()}
-                                                    sx={{ m: 0 }}
+                                                    sx={{ 
+                                                        m: 0,
+                                                        '& .MuiTypography-root': {
+                                                            textOverflow: 'ellipsis',
+                                                            overflow: 'hidden',
+                                                            whiteSpace: 'nowrap'
+                                                        }
+                                                    }}
                                                 />
                                             </Box>
-                                            <Typography 
-                                                variant="body2" 
-                                                sx={{ 
-                                                    pl: 7,
-                                                    width: '100%',
-                                                    wordBreak: 'break-word'
-                                                }}
-                                            >
-                                                {message.content}
-                                            </Typography>
+                                            {message.type === 'file' && message.attachments?.map((attachment) => (
+                                                <Box key={attachment.id} sx={{ 
+                                                    pl: 7, 
+                                                    width: '100%', 
+                                                    mb: 1,
+                                                    minWidth: 0, // Allow flex child to shrink
+                                                    '& .MuiChip-root': { // Target FilePreview's Chip component
+                                                        maxWidth: '100%',
+                                                        '& .MuiChip-label': {
+                                                            textOverflow: 'ellipsis',
+                                                            overflow: 'hidden',
+                                                            whiteSpace: 'nowrap'
+                                                        }
+                                                    }
+                                                }}>
+                                                    <FilePreview
+                                                        fileUrl={attachment.file_url}
+                                                        fileName={attachment.file_name}
+                                                        fileType={attachment.file_type}
+                                                        fileSize={attachment.file_size}
+                                                    />
+                                                </Box>
+                                            ))}
+                                            {message.content && (
+                                                <Typography 
+                                                    variant="body2" 
+                                                    sx={{ 
+                                                        pl: 7,
+                                                        width: '100%',
+                                                        wordBreak: 'break-word',
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 3,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis'
+                                                    }}
+                                                >
+                                                    {message.content}
+                                                </Typography>
+                                            )}
                                         </ListItem>
                                     ))}
                                 </List>
                                 {filteredMessages.length === 0 && (
                                     <Typography color="text.secondary" align="center" sx={{ mt: 2 }}>
-                                        No messages found
+                                        No messages or files found
                                     </Typography>
                                 )}
                             </>
