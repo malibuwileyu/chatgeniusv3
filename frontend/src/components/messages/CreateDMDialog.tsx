@@ -93,7 +93,8 @@ const CreateDMDialog: React.FC<CreateDMDialogProps> = ({ open, onClose }) => {
                     .insert({
                         type: 'dm',
                         user_ids: [currentUser.id, selectedUserId],
-                        name: `DM:${currentUser.id}:${selectedUserId}` // We'll display actual usernames in UI
+                        name: `DM:${currentUser.id}:${selectedUserId}`, // We'll display actual usernames in UI
+                        created_by: currentUser.id
                     })
                     .select()
                     .single();

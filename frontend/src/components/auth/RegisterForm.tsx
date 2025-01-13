@@ -65,15 +65,13 @@ const RegisterForm = () => {
     };
 
     return (
-        <Container component="main" maxWidth="xs">
-            <Box
-                sx={{
-                    marginTop: 8,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                }}
-            >
+        <Box
+            className="centered-page"
+            sx={{
+                bgcolor: 'background.default'
+            }}
+        >
+            <Container component="main" maxWidth="xs">
                 <Paper
                     elevation={3}
                     sx={{
@@ -82,6 +80,7 @@ const RegisterForm = () => {
                         flexDirection: 'column',
                         alignItems: 'center',
                         width: '100%',
+                        bgcolor: 'background.paper'
                     }}
                 >
                     <Typography component="h1" variant="h5" gutterBottom>
@@ -166,8 +165,8 @@ const RegisterForm = () => {
                         </Box>
                     </Box>
                 </Paper>
-            </Box>
-        </Container>
+            </Container>
+        </Box>
     );
 };
 

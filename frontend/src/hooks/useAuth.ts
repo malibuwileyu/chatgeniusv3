@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store/store';
 import { setCredentials, setError, logout } from '../store/slices/authSlice';
 import api from '../services/api';
+import { supabase } from '../services/supabase';
 
 interface AuthState {
     user: {
@@ -18,7 +19,7 @@ interface AuthState {
     error: string | null;
 }
 
-export const useAuth = () => {
+const useAuth = () => {
     const dispatch = useDispatch();
     const auth = useSelector((state: RootState) => state.auth) as AuthState;
 
@@ -46,6 +47,16 @@ export const useAuth = () => {
         try {
             dispatch(setError(null));
             const response = await api.post('/auth/login', { email, password });
+            
+            // Set up Supabase session
+            await supabase.auth.setSession({
+                access_token: response.data.token,
+                refresh_token: ''
+            });
+            
+            // Store token in localStorage
+            localStorage.setItem('token', response.data.token);
+            
             dispatch(setCredentials(response.data));
             return response.data;
         } catch (error: any) {
@@ -64,7 +75,21 @@ export const useAuth = () => {
         try {
             dispatch(setError(null));
             const response = await api.post('/auth/register', userData);
-            dispatch(setCredentials(response.data));
+            
+            // Set up Supabase session
+            await supabase.auth.setSession({
+                access_token: response.data.token,
+                refresh_token: ''
+            });
+            
+            // Store user data and token in localStorage
+            localStorage.setItem('token', response.data.token);
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+            
+            dispatch(setCredentials({
+                user: response.data.user,
+                token: response.data.token
+            }));
             return response.data;
         } catch (error: any) {
             const message = error.response?.data?.message || 'An error occurred during registration';
@@ -73,7 +98,11 @@ export const useAuth = () => {
         }
     };
 
-    const logoutUser = () => {
+    const logoutUser = async () => {
+        // Clear Supabase session
+        await supabase.auth.signOut();
+        // Clear token from localStorage
+        localStorage.removeItem('token');
         dispatch(logout());
     };
 

@@ -4,8 +4,9 @@ import { Delete as DeleteIcon, AddReaction as AddReactionIcon } from '@mui/icons
 import { Message as MessageType } from '../../store/slices/messageSlice';
 import { supabase } from '../../services/supabase';
 import FilePreview from './FilePreview';
-import { useAppSelector } from '../../store/hooks';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { RootState } from '../../store/store';
+import { deleteMessage } from '../../store/slices/messageSlice';
 
 interface MessageProps {
     message: MessageType;
@@ -26,6 +27,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
     const [showDelete, setShowDelete] = useState(false);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const currentUser = useAppSelector((state: RootState) => state.auth.user);
+    const dispatch = useAppDispatch();
 
     const formatTime = (dateString: string) => {
         const date = new Date(dateString);
@@ -96,6 +98,11 @@ const Message: React.FC<MessageProps> = ({ message }) => {
     }, [message.id, message.type]);
 
     const handleDelete = async () => {
+        if (!currentUser || message.user?.id !== currentUser.id) {
+            console.error('Cannot delete message: User is not the message owner');
+            return;
+        }
+
         try {
             console.log('Starting delete operation for message:', message.id);
             
@@ -120,19 +127,19 @@ const Message: React.FC<MessageProps> = ({ message }) => {
 
             // Delete the message (this will cascade delete attachments in the database)
             console.log('Deleting message from database:', message.id);
-            const { error, data } = await supabase
+            const { error } = await supabase
                 .from('messages')
                 .delete()
-                .eq('id', message.id)
-                .select()
-                .single();
+                .eq('id', message.id);
 
             if (error) {
                 console.error('Error deleting message:', error);
                 throw error;
             }
             
-            console.log('Message deleted successfully:', data);
+            // Dispatch delete action to update Redux store
+            dispatch(deleteMessage(message.id));
+            console.log('Message deleted successfully');
         } catch (error) {
             console.error('Error in handleDelete:', error);
         }

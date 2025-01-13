@@ -46,11 +46,28 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
 
     const handleSendMessage = async () => {
         if (!message.trim() && !currentUpload) return;
+        if (!currentUser) {
+            console.error('Cannot send message: User not authenticated');
+            return;
+        }
 
         try {
+            // First verify user is a member of the channel
+            const { data: membership, error: membershipError } = await supabase
+                .from('channel_members')
+                .select('role')
+                .eq('channel_id', channelId)
+                .eq('user_id', currentUser.id)
+                .single();
+
+            if (membershipError || !membership) {
+                console.error('Cannot send message: User is not a member of this channel', membershipError);
+                return;
+            }
+
             let messageData = {
                 channel_id: channelId,
-                user_id: currentUser?.id,
+                user_id: currentUser.id,
                 content: message.trim() || currentUpload?.fileName || '',
                 type: currentUpload ? 'file' : 'text'
             };
@@ -62,10 +79,13 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
                 .select<'*', SupabaseMessage>()
                 .single();
 
-            if (messageError) throw messageError;
+            if (messageError) {
+                console.error('Error creating message:', messageError);
+                throw messageError;
+            }
 
             // If we have a file, create the attachment record
-            if (currentUpload) {
+            if (currentUpload && messageRecord) {
                 const { error: attachmentError } = await supabase
                     .from('attachments')
                     .insert([{
@@ -76,7 +96,10 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
                         file_size: currentUpload.fileSize
                     }]);
 
-                if (attachmentError) throw attachmentError;
+                if (attachmentError) {
+                    console.error('Error creating attachment:', attachmentError);
+                    throw attachmentError;
+                }
                 setCurrentUpload(null); // Clear the upload only after successful send
             }
 
@@ -95,11 +118,11 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
         }
 
         // Set typing status to true
-        setTyping(true);
+        setTyping(channelId, true);
 
         // Set timeout to clear typing status after 2 seconds of no input
         typingTimeoutRef.current = setTimeout(() => {
-            setTyping(false);
+            setTyping(channelId, false);
         }, 2000);
     };
 
@@ -109,7 +132,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
             if (typingTimeoutRef.current) {
                 clearTimeout(typingTimeoutRef.current);
             }
-            setTyping(false);
+            setTyping(channelId, false);
         };
     }, []);
 

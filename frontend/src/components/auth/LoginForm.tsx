@@ -34,11 +34,8 @@ const LoginForm = () => {
 
     return (
         <Box
+            className="centered-page"
             sx={{
-                minHeight: '100vh',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 bgcolor: 'background.default'
             }}
         >
@@ -51,6 +48,7 @@ const LoginForm = () => {
                         flexDirection: 'column',
                         alignItems: 'center',
                         width: '100%',
+                        bgcolor: 'background.paper'
                     }}
                 >
                     <Typography component="h1" variant="h5" gutterBottom>

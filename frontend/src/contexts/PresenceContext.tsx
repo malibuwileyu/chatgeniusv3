@@ -15,7 +15,7 @@ interface PresenceData {
 interface PresenceContextType {
     presenceData: Record<string, PresenceData>;
     typingUsers: Record<string, string[]>;
-    setTyping: (isTyping: boolean) => Promise<void>;
+    setTyping: (channelId: string, isTyping: boolean) => Promise<void>;
     setStatus: (status: 'online' | 'offline' | 'away', customStatus?: string) => Promise<void>;
     error: Error | null;
 }
@@ -77,17 +77,21 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         initializePresence();
     }, [currentUser]);
 
-    const setTyping = async (isTyping: boolean) => {
+    const setTyping = async (channelId: string, isTyping: boolean) => {
         if (!currentUser) return;
-
+        
         try {
-            const { error: typingError } = await supabase.rpc('update_typing_status', {
-                is_typing_status: isTyping
+            const { error } = await supabase.rpc('update_typing_status', {
+                channel_uuid: channelId,
+                is_typing: isTyping,
+                user_uuid: currentUser.id
             });
 
-            if (typingError) throw typingError;
-        } catch (err) {
-            setError(err as Error);
+            if (error) {
+                console.error('Error updating typing status:', error);
+            }
+        } catch (error) {
+            console.error('Error updating typing status:', error);
         }
     };
 
