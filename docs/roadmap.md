@@ -27,12 +27,13 @@
 ## Non-MVP Todo
 - [ ] Fix chat message right side cutoff issue
 - [x] Add channel creation UI (2024-01-13 03:00 EST)
-- [ ] Implement channel deletion with confirmation
-- [ ] Create channel settings modal (name, description, permissions)
+- [x] Implement channel deletion with confirmation (2024-01-13 05:30 EST)
+- [x] Create channel settings modal (name, description, permissions) (2024-01-13 05:30 EST)
 - [ ] Add channel member management
 - [ ] Add message highlighting and scrolling to message when clicked in search results
 - [ ] Implement "move to top" functionality for existing DMs
 - [ ] Add registration screen accessible from login
+- [ ] Implement custom file upload progress tracking with XMLHttpRequest or fetch API
 
 ## Backend Development
 - [x] Set up Express server with TypeScript (2024-01-12 17:00 EST)

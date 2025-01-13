@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { List, ListItem, ListItemButton, ListItemText, ListItemIcon, IconButton, Box, Typography, Drawer, Button, Avatar } from '@mui/material';
+import { List, ListItem, ListItemButton, ListItemText, ListItemIcon, ListItemSecondaryAction, IconButton, Box, Typography, Drawer, Button, Avatar } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import TagIcon from '@mui/icons-material/Tag';
 import LockIcon from '@mui/icons-material/Lock';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 import { RootState } from '../../store/store';
 import CreateChannelDialog from './CreateChannelDialog';
 import CreateDMDialog from '../messages/CreateDMDialog';
+import ChannelSettingsDialog from './ChannelSettingsDialog';
 import useChannels from '../../hooks/useChannels';
 import { supabase } from '../../services/supabase';
 
@@ -23,6 +25,7 @@ const ChannelList = ({ mobileOpen, handleDrawerToggle, drawerWidth }: ChannelLis
     const navigate = useNavigate();
     const [isChannelDialogOpen, setIsChannelDialogOpen] = useState(false);
     const [isDMDialogOpen, setIsDMDialogOpen] = useState(false);
+    const [selectedChannel, setSelectedChannel] = useState<{ id: string; name: string } | null>(null);
     const channels = useAppSelector((state: RootState) => state.channels.channels);
     const currentUser = useAppSelector((state: RootState) => state.auth.user);
     const [dmUsers, setDmUsers] = useState<Record<string, any>>({});
@@ -85,6 +88,11 @@ const ChannelList = ({ mobileOpen, handleDrawerToggle, drawerWidth }: ChannelLis
         return otherUser ? otherUser.full_name : 'Unknown User';
     };
 
+    const handleSettingsClick = (event: React.MouseEvent, channel: any) => {
+        event.stopPropagation();
+        setSelectedChannel({ id: channel.id, name: channel.name });
+    };
+
     const drawer = (
         <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1 }}>
@@ -97,8 +105,23 @@ const ChannelList = ({ mobileOpen, handleDrawerToggle, drawerWidth }: ChannelLis
             </Box>
             <List>
                 {regularChannels.map((channel) => (
-                    <ListItem key={channel.id} disablePadding>
-                        <ListItemButton onClick={() => handleChannelClick(channel.id)}>
+                    <ListItem 
+                        key={channel.id} 
+                        disablePadding
+                        secondaryAction={
+                            <IconButton 
+                                edge="end" 
+                                size="small"
+                                onClick={(e) => handleSettingsClick(e, channel)}
+                            >
+                                <SettingsIcon fontSize="small" />
+                            </IconButton>
+                        }
+                    >
+                        <ListItemButton 
+                            onClick={() => handleChannelClick(channel.id)}
+                            sx={{ pr: 7 }} // Make room for settings icon
+                        >
                             <ListItemIcon sx={{ minWidth: 36 }}>
                                 {channel.type === 'private' ? <LockIcon fontSize="small" /> : <TagIcon fontSize="small" />}
                             </ListItemIcon>
@@ -158,6 +181,14 @@ const ChannelList = ({ mobileOpen, handleDrawerToggle, drawerWidth }: ChannelLis
                 open={isDMDialogOpen}
                 onClose={() => setIsDMDialogOpen(false)}
             />
+            {selectedChannel && (
+                <ChannelSettingsDialog
+                    open={!!selectedChannel}
+                    onClose={() => setSelectedChannel(null)}
+                    channelId={selectedChannel.id}
+                    channelName={selectedChannel.name}
+                />
+            )}
         </Box>
     );
 
