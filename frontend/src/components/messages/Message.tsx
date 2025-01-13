@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Avatar, IconButton, Stack } from '@mui/material';
-import { Delete as DeleteIcon } from '@mui/icons-material';
+import { Box, Typography, Avatar, IconButton, Stack, Tooltip, Menu, MenuItem } from '@mui/material';
+import { Delete as DeleteIcon, AddReaction as AddReactionIcon } from '@mui/icons-material';
 import { Message as MessageType } from '../../store/slices/messageSlice';
 import { supabase } from '../../services/supabase';
 import FilePreview from './FilePreview';
+import { useAppSelector } from '../../store/hooks';
+import { RootState } from '../../store/store';
 
 interface MessageProps {
     message: MessageType;
@@ -17,13 +19,60 @@ interface Attachment {
     file_size: number;
 }
 
+const EMOJI_LIST = ['👍', '❤️', '😂', '😮', '😢', '🎉'];
+
 const Message: React.FC<MessageProps> = ({ message }) => {
     const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [showDelete, setShowDelete] = useState(false);
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const currentUser = useAppSelector((state: RootState) => state.auth.user);
 
     const formatTime = (dateString: string) => {
         const date = new Date(dateString);
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const handleReactionClick = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleReactionClose = () => {
+        setAnchorEl(null);
+    };
+
+    const handleEmojiSelect = async (emoji: string) => {
+        if (!currentUser) return;
+
+        try {
+            const existingReaction = message.reactions?.find(
+                r => r.user_id === currentUser.id && r.emoji === emoji
+            );
+
+            if (existingReaction) {
+                // Remove reaction
+                await supabase
+                    .from('reactions')
+                    .delete()
+                    .match({
+                        message_id: message.id,
+                        user_id: currentUser.id,
+                        emoji
+                    });
+            } else {
+                // Add reaction
+                await supabase
+                    .from('reactions')
+                    .insert([{
+                        message_id: message.id,
+                        user_id: currentUser.id,
+                        emoji
+                    }]);
+            }
+        } catch (error) {
+            console.error('Error toggling reaction:', error);
+        }
+
+        handleReactionClose();
     };
 
     useEffect(() => {
@@ -89,6 +138,52 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         }
     };
 
+    const renderReactions = () => {
+        const reactionCounts = message.reactions?.reduce((acc, reaction) => {
+            acc[reaction.emoji] = (acc[reaction.emoji] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>) || {};
+
+        return (
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
+                {Object.entries(reactionCounts).map(([emoji, count]) => {
+                    const hasReacted = message.reactions?.some(
+                        r => r.emoji === emoji && r.user_id === currentUser?.id
+                    );
+                    return (
+                        <Tooltip
+                            key={emoji}
+                            title={message.reactions
+                                ?.filter(r => r.emoji === emoji)
+                                .map(r => r.user_id)
+                                .join(', ')}
+                        >
+                            <Box
+                                onClick={() => handleEmojiSelect(emoji)}
+                                sx={{
+                                    cursor: 'pointer',
+                                    bgcolor: hasReacted ? 'action.selected' : 'action.hover',
+                                    borderRadius: 1,
+                                    px: 0.5,
+                                    py: 0.25,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    '&:hover': {
+                                        bgcolor: 'action.selected'
+                                    }
+                                }}
+                            >
+                                <span>{emoji}</span>
+                                <Typography variant="caption">{count}</Typography>
+                            </Box>
+                        </Tooltip>
+                    );
+                })}
+            </Box>
+        );
+    };
+
     return (
         <Box
             sx={{
@@ -126,8 +221,8 @@ const Message: React.FC<MessageProps> = ({ message }) => {
                 <DeleteIcon fontSize="small" />
             </IconButton>
 
-            <Avatar src={message.user?.avatar_url}>
-                {message.user?.full_name?.charAt(0) || 'U'}
+            <Avatar src={message.user?.avatar_url} alt={message.user?.username}>
+                {message.user?.username?.[0]?.toUpperCase()}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Stack direction="row" spacing={1} alignItems="center">
@@ -153,9 +248,45 @@ const Message: React.FC<MessageProps> = ({ message }) => {
                 
                 {/* Always show the message content if it exists */}
                 {message.content && (
-                    <Typography variant="body1" sx={{ wordBreak: 'break-word' }}>
-                        {message.content}
-                    </Typography>
+                    <>
+                        <Typography variant="body1" sx={{ wordBreak: 'break-word' }}>
+                            {message.content}
+                        </Typography>
+                        {message.type === 'file' && attachments.map(attachment => (
+                            <FilePreview
+                                key={attachment.id}
+                                fileUrl={attachment.file_url}
+                                fileName={attachment.file_name}
+                                fileType={attachment.file_type}
+                                fileSize={attachment.file_size}
+                            />
+                        ))}
+                        {renderReactions()}
+                        <IconButton
+                            size="small"
+                            onClick={handleReactionClick}
+                            sx={{ mt: 0.5 }}
+                        >
+                            <AddReactionIcon fontSize="small" />
+                        </IconButton>
+                        <Menu
+                            anchorEl={anchorEl}
+                            open={Boolean(anchorEl)}
+                            onClose={handleReactionClose}
+                        >
+                            <Box sx={{ display: 'flex', p: 1, gap: 0.5 }}>
+                                {EMOJI_LIST.map(emoji => (
+                                    <MenuItem
+                                        key={emoji}
+                                        onClick={() => handleEmojiSelect(emoji)}
+                                        sx={{ minWidth: 'auto' }}
+                                    >
+                                        {emoji}
+                                    </MenuItem>
+                                ))}
+                            </Box>
+                        </Menu>
+                    </>
                 )}
             </Box>
         </Box>

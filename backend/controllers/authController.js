@@ -27,6 +27,9 @@ const register = async (req, res) => {
 
         if (error) throw error;
 
+        // Initialize presence
+        await User.initializePresence(user.id);
+
         // Create token
         const token = jwt.sign(
             { id: user.id },
@@ -65,8 +68,9 @@ const login = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // Update user status
+        // Update user status and initialize presence
         await User.updateStatus(user.id, 'online');
+        await User.initializePresence(user.id);
 
         // Create token
         const token = jwt.sign(

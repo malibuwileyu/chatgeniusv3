@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import MessageList from '../components/messages/MessageList';
 import MessageInput from '../components/messages/MessageInput';
 import RightSidebar from '../components/chat/RightSidebar';
+import usePresence from '../hooks/usePresence';
 
 const ChannelChat: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -52,6 +53,7 @@ const ChannelChat: React.FC = () => {
                 showPresence={showPresence}
                 showSearch={showSearch}
                 channelId={id}
+                onClose={handlePresenceClick}
             />
         </Box>
     );

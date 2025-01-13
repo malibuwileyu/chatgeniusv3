@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react';
-import { Box, TextField, IconButton, Stack } from '@mui/material';
+import React, { useState, useRef, useEffect } from 'react';
+import { Box, TextField, IconButton, Stack, InputAdornment } from '@mui/material';
 import { Send as SendIcon, AttachFile as AttachFileIcon } from '@mui/icons-material';
 import { useAppSelector } from '../../store/hooks';
 import { RootState } from '../../store/store';
 import { supabase } from '../../services/supabase';
 import FileService, { FileUploadProgress } from '../../services/fileService';
 import FilePreview from './FilePreview';
+import { usePresence } from '../../contexts/PresenceContext';
 
 interface MessageInputProps {
     channelId: string;
@@ -17,6 +18,15 @@ interface SupabaseMessage {
     user_id: string;
     content: string;
     type: 'text' | 'file' | 'ai' | 'system';
+}
+
+interface FilePreviewProps {
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    isUploading?: boolean;
+    uploadProgress?: number;
+    onRemove?: () => void;
 }
 
 const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
@@ -31,6 +41,8 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
     } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const currentUser = useAppSelector((state: RootState) => state.auth.user);
+    const { setTyping } = usePresence(channelId);
+    const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
     const handleSendMessage = async () => {
         if (!message.trim() && !currentUpload) return;
@@ -74,12 +86,32 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
         }
     };
 
-    const handleKeyPress = (event: React.KeyboardEvent<HTMLDivElement>) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            handleSendMessage();
+    const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setMessage(e.target.value);
+        
+        // Clear existing timeout
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
         }
+
+        // Set typing status to true
+        setTyping(true);
+
+        // Set timeout to clear typing status after 2 seconds of no input
+        typingTimeoutRef.current = setTimeout(() => {
+            setTyping(false);
+        }, 2000);
     };
+
+    // Clear typing status when component unmounts
+    useEffect(() => {
+        return () => {
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+            setTyping(false);
+        };
+    }, []);
 
     const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -125,22 +157,17 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
     };
 
     return (
-        <Box 
-            sx={{ 
-                pl: 2,
-                pr: 4,
-                py: 2,
-                borderTop: 1,
-                borderRight: 1,
-                borderColor: 'divider',
-                bgcolor: 'background.paper',
-                flexShrink: 0
-            }}
-        >
+        <Box sx={{
+            p: 2,
+            borderTop: 1,
+            borderRight: 1,
+            borderColor: 'divider',
+            bgcolor: 'background.paper',
+        }}>
             {currentUpload && (
                 <Box sx={{ mb: 1 }}>
                     <FilePreview
-                        fileUrl={currentUpload.url}
+                        fileUrl={currentUpload.url || ''}
                         fileName={currentUpload.fileName}
                         fileType={currentUpload.fileType}
                         fileSize={currentUpload.fileSize}
@@ -150,13 +177,12 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
                     />
                 </Box>
             )}
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
                 <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={handleFileSelect}
                     style={{ display: 'none' }}
-                    accept="image/*,.pdf,.doc,.docx,.txt"
+                    onChange={handleFileSelect}
                 />
                 <IconButton
                     onClick={() => fileInputRef.current?.click()}
@@ -166,27 +192,31 @@ const MessageInput: React.FC<MessageInputProps> = ({ channelId }) => {
                 </IconButton>
                 <TextField
                     fullWidth
-                    multiline
-                    maxRows={4}
+                    size="small"
+                    placeholder="Type a message..."
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder={currentUpload ? "Add a message or send file directly..." : "Type a message..."}
-                    disabled={isUploading}
-                    sx={{ 
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 2
+                    onChange={handleMessageChange}
+                    onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
                         }
                     }}
+                    disabled={isUploading}
+                    InputProps={{
+                        endAdornment: (
+                            <InputAdornment position="end">
+                                <IconButton
+                                    onClick={handleSendMessage}
+                                    disabled={isUploading || (!message.trim() && !currentUpload)}
+                                >
+                                    <SendIcon />
+                                </IconButton>
+                            </InputAdornment>
+                        )
+                    }}
                 />
-                <IconButton
-                    onClick={handleSendMessage}
-                    disabled={(!message.trim() && !currentUpload) || isUploading}
-                    color="primary"
-                >
-                    <SendIcon />
-                </IconButton>
-            </Stack>
+            </Box>
         </Box>
     );
 };

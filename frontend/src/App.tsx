@@ -11,6 +11,7 @@ import ChannelSelection from './pages/ChannelSelection';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { Box } from '@mui/material';
 import RegisterForm from './components/auth/RegisterForm';
+import { PresenceProvider } from './contexts/PresenceContext';
 
 const App = () => {
     return (
@@ -24,25 +25,27 @@ const App = () => {
         >
             <Provider store={store}>
                 <ThemeProvider theme={theme}>
-                    <Router>
-                        <Routes>
-                            <Route path="/login" element={<LoginForm />} />
-                            <Route path="/register" element={<RegisterForm />} />
-                            <Route
-                                path="/"
-                                element={
-                                    <ProtectedRoute>
-                                        <HomePage />
-                                    </ProtectedRoute>
-                                }
-                            >
-                                <Route index element={<Welcome />} />
-                                <Route path="channels/:id" element={<ChannelChat />} />
-                                <Route path="browse-channels" element={<ChannelSelection />} />
-                            </Route>
-                            <Route path="*" element={<Navigate to="/" replace />} />
-                        </Routes>
-                    </Router>
+                    <PresenceProvider>
+                        <Router>
+                            <Routes>
+                                <Route path="/login" element={<LoginForm />} />
+                                <Route path="/register" element={<RegisterForm />} />
+                                <Route
+                                    path="/"
+                                    element={
+                                        <ProtectedRoute>
+                                            <HomePage />
+                                        </ProtectedRoute>
+                                    }
+                                >
+                                    <Route index element={<Welcome />} />
+                                    <Route path="channels/:id" element={<ChannelChat />} />
+                                    <Route path="browse-channels" element={<ChannelSelection />} />
+                                </Route>
+                                <Route path="*" element={<Navigate to="/" replace />} />
+                            </Routes>
+                        </Router>
+                    </PresenceProvider>
                 </ThemeProvider>
             </Provider>
         </Box>

@@ -36,6 +36,18 @@ class User {
             .eq('id', userId);
     }
 
+    static async initializePresence(userId) {
+        return await supabase
+            .from('presence')
+            .upsert({
+                user_id: userId,
+                status: 'online',
+                is_typing: {},
+                last_seen: new Date().toISOString()
+            })
+            .select();
+    }
+
     static async updateProfile(userId, updates) {
         return await supabase
             .from('users')
