@@ -25,6 +25,7 @@ import channelRoutes from './routes/channels.js';
 import userRoutes from './routes/users.js';
 import reactionRoutes from './routes/reactions.js';
 import fileRoutes from './routes/files.js';
+import ragRoutes from './routes/rag.js';
 import { authenticateJWT } from './middleware/auth.js';
 
 dotenv.config();
@@ -52,13 +53,21 @@ app.use('/api/channels', channelRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reactions', reactionRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/rag', ragRoutes);
 
 // Protected route example
 app.get('/api/protected', authenticateJWT, (req, res) => {
     res.json({ message: 'Protected route accessed successfully', user: req.user });
 });
 
-// Start server
+// Start server only if not being imported for tests
 const server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-}); 
+    if (process.argv[1] !== new URL(import.meta.url).pathname) {
+        console.log('Server started for testing');
+    } else {
+        console.log(`Server running on port ${PORT}`);
+    }
+});
+
+// Export for testing
+export { app, server }; 

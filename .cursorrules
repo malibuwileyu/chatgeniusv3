@@ -264,4 +264,26 @@ src/
 
 ---
 
+## 12. File Editing Best Practices
+
+1. When making edits to files, minimize the number of lines being replaced:
+   - Only modify the specific parts of lines that need to change
+   - Preserve the rest of the line content
+   - Example for marking a task complete with timestamp:
+     ```diff
+     - - [ ] Task description
+     + - [x] Task description (2024-01-19 15:45 EST)
+     ```
+   - Instead of replacing the entire line content
+2. Use the special comment `// ... existing code ...` to indicate unchanged sections
+3. Include sufficient context around edits to ensure proper placement
+4. Document any dependencies or side effects of the changes
+5. When installing new packages:
+   - Always use --save or --save-dev to update package.json
+   - Document any peer dependencies
+   - Specify version requirements if needed
+   - Example: `npm install --save openai@^4.0.0`
+
+---
+
 **By following these rules, we ensure consistency, clarity, and maintainability across the entire project—covering database schemas, backend services, frontend React components, and documentation processes.**
