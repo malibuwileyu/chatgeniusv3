@@ -1,0 +1,267 @@
+# Cursor Rules
+
+Below is a consolidated set of rules and guidelines for maintaining best practices across database, backend, and frontend codebases. These rules also incorporate Git best practices, naming conventions, documentation standards, and a mark-off/timestamp method for the roadmap documentation.
+
+---
+
+## 1. General Rules
+
+1. Use type hints, logging, and docstrings as per the global instructions.
+2. Ensure that environment variables are managed securely (never commit secrets).
+3. Provide basic documentation (docstring) for all methods/functions to describe their purpose, parameters, and returns.  
+4. At the top of each file, include:
+   - A brief description of the file’s purpose and functionality.  
+   - Author information (optional).  
+   - Any relevant usage notes or references.
+5. Use Auth0 for all authentication needs.
+
+---
+
+## 2. Naming Conventions
+
+### 2.1 Database
+
+- Table names: Plural, snake_case (e.g., `user_profiles`, `chat_messages`).
+- Column names: Singular, snake_case (e.g., `first_name`, `created_at`).
+- Foreign keys: `<table_name>_id` (e.g., `user_id`, `channel_id`).
+- Indexes: `idx_<table>_<column(s)>` (e.g., `idx_users_email`).
+- Migration files: `YYYYMMDD_description.sql` (e.g., `20240112_add_user_roles.sql`).
+
+### 2.2 Backend (Express, Node/TS)
+
+- Controllers: kebab-case + `-controller.ts` suffix (e.g., `user-controller.ts`).
+- Services: kebab-case + `-service.ts` suffix (e.g., `auth-service.ts`).
+- Routes: kebab-case + `-routes.ts` suffix (e.g., `user-routes.ts`).
+- Middleware: kebab-case + `-middleware.ts` suffix (e.g., `auth-middleware.ts`).
+- Config: kebab-case + `-config.ts` suffix (e.g., `database-config.ts`).
+- Types/Interfaces:
+  - Types: PascalCase (e.g., `UserRole.ts`, `MessageType.ts`).
+  - Interfaces: PascalCase with `I` prefix (e.g., `IUser.ts`, `IMessage.ts`).
+- Utilities: kebab-case + `.ts` (e.g., `string-utils.ts`, `date-utils.ts`).
+- Tests: place in `__tests__` with `.test.ts` suffix (e.g., `user-service.test.ts`).
+- Mocks: place in `__mocks__` with the same name as the mocked file.
+- Environment files:
+  - `.env.development`
+  - `.env.production`
+  - `.env.local`
+  - `.env.example`
+
+### 2.3 Frontend (React/TypeScript)
+
+- Components:
+  - Directories: kebab-case (e.g., `user-profile/`, `chat-messages/`).
+  - Files: PascalCase + `.tsx` suffix (e.g., `UserProfile.tsx`, `ChatMessage.tsx`).
+- Hooks:
+  - Directories: kebab-case (e.g., `hooks/auth/`, `hooks/channel/`).
+  - Files: camelCase + `use` prefix + `.ts` suffix (e.g., `useAuth.ts`, `useChannel.ts`).
+- Store (if using Redux or Zustand):
+  - Directories: kebab-case (e.g., `stores/`).
+  - Files: kebab-case + `.store.ts` suffix (e.g., `user.store.ts`).
+- Utilities:
+  - Directories: kebab-case (e.g., `utils/string/`, `utils/date/`).
+  - Files: kebab-case + `.ts` suffix (e.g., `string.utils.ts`, `date.utils.ts`).
+- Styles:
+  - Directories: kebab-case (e.g., `styles/`).
+  - Files: kebab-case + `.styles.ts` suffix (e.g., `button.styles.ts`).
+- Types:
+  - Directories: kebab-case (e.g., `types/`).
+  - Files: PascalCase + `.types.ts` suffix (e.g., `User.types.ts`, `Message.types.ts`).
+- Services:
+  - Directories: kebab-case (e.g., `services/auth/`, `services/api/`).
+  - Files: kebab-case + `.service.ts` suffix (e.g., `auth.service.ts`, `api.service.ts`).
+- Tests: place in `__tests__` with `.test.tsx` or `.test.ts` suffix.
+- Mocks: place in `__mocks__` with the same name as the mocked file.
+
+---
+
+## 3. TypeScript Type Organization
+
+### 3.1 Directory Structure
+
+src/
+├── types/ # Domain & shared types
+│ ├── channel.types.ts # Core domain models
+│ ├── message.types.ts
+│ ├── user.types.ts
+│ ├── common.types.ts # Shared utility types
+│ └── api/
+│ ├── channel.api.types.ts
+│ ├── message.api.types.ts
+│ └── user.api.types.ts
+├── stores/ # Store-specific types
+│ ├── channel.store.ts # Contains ChannelState and ChannelActions
+│ └── message.store.ts # Contains MessageState and MessageActions
+└── components/ # Component-specific types
+└── channels/
+└── channel-view/
+└── ChannelView.tsx # Contains ChannelViewProps
+
+### 3.2 Domain Types (`@/types/*.types.ts`)
+
+- Core domain models and interfaces (e.g., `Channel`, `Message`).
+- Enums and shared types.
+- Example: `channel.types.ts`, `message.types.ts`.
+
+### 3.3 Shared Utility Types (`@/types/common.types.ts`)
+
+- Reusable, project-wide type utilities.
+- Example: `Nullable<T>`, `AsyncResult<T>`, `Pagination<T>`.
+
+### 3.4 API Types (`@/types/api/*.types.ts`)
+
+- For request/response definitions.  
+- Use `Api` prefix for interfaces (e.g., `ApiChannel`, `ApiMessage`).  
+- Example: `channel.api.types.ts`, `message.api.types.ts`.
+
+### 3.5 Store Types
+
+- Defined in respective store files, referencing domain types from `@/types/`.
+- Example: `interface ChannelState`, `interface ChannelActions`.
+
+### 3.6 Component Types
+
+- Defined in the component file or a separate `.types.ts`.
+- Use domain types from `@/types/` and API types from `@/types/api/`.
+- Example: `interface ChannelViewProps`.
+
+### 3.7 Naming Conventions
+
+- PascalCase for domain interfaces (e.g., `Channel`, `Message`).
+- `Api` prefix for API interfaces (e.g., `ApiChannel`, `ApiMessage`).
+- `Request`/`Response` suffix for request/response types (e.g., `CreateChannelRequest`, `ChannelListResponse`).
+- `State`/`Actions` suffix for store interfaces (e.g., `ChannelState`, `ChannelActions`).
+- `Props` suffix for component interfaces (e.g., `ChannelViewProps`).
+
+### 3.8 Import Rules
+
+- Use `@/types/` alias for domain types.
+- Use `@/types/api/` alias for API types.
+- Avoid relative imports for these shared types.
+
+---
+
+## 4. Auth0 Configuration
+
+1. Prefix Auth0-related environment variables with `AUTH0_`.  
+2. Required environment vars:  
+   - `AUTH0_DOMAIN`  
+   - `AUTH0_CLIENT_ID`  
+   - `AUTH0_CLIENT_SECRET` (backend only)  
+   - `AUTH0_AUDIENCE`  
+3. Store Auth0 config in dedicated config files, following naming and structural guidelines.  
+4. Use Auth0 SDK for React in the frontend; Auth0 Management API in the backend when needed.
+
+---
+
+## 5. Environment Variables
+
+1. Update `.env.example` when introducing or altering environment variables.
+2. Store sensitive variables in `.env.local` and never commit them.
+3. Group environment variables by functionality in environment files (DB, AUTH0, API, etc.).
+
+---
+
+## 6. File Structure
+
+1. Organize components, hooks, and utilities according to kebab-case directories.
+2. Maintain separate directories for shared and one-off components (e.g., `components/` vs. `_components/` if that pattern exists).
+3. Keep Auth0-related components in `/components/auth/` and hooks in `/hooks/auth/`.
+
+---
+
+## 7. Git Rules
+
+1. Follow a step-by-step commit process:
+   - Check the current status: `git status`.
+   - Add specific changed files: `git add <files>`.
+   - Commit with a concise message:
+     - Lowercase, present tense, no trailing period.
+     - Follow Conventional Commits or a similar structured format:
+       - `type(scope): message [Feature ID(s): ID-xxx]`
+       - Example: `feat(auth): add OAuth login flow [Feature ID(s): ID-003]`
+   - Optionally add a detailed body if multiple changes are related to different feature IDs.
+   - Confirm final status with `git status` and push.
+2. Commit Types:
+   - `feat`: new feature
+   - `fix`: bug fix
+   - `docs`: documentation changes
+   - `style`: formatting (no change in logic)
+   - `refactor`: code changes that neither fix a bug nor add a feature
+   - `test`: adding or correcting tests
+   - `chore`: build process or auxiliary tools changes, no production code change
+3. Include relevant ticket/feature IDs in commit messages whenever possible.
+
+---
+
+## 8. Documentation Rules
+
+1. Maintain evergreen Markdown files (`SDD.md`, `TDD.md`, `implementation.md`, `roadmap.md`) by regularly updating them:
+   - For `roadmap.md`, use the mark-off and timestamp convention:
+     - `- [x] Feature description (YYYY-MM-DD HH:mm TZ)`
+   - Ensure incomplete tasks remain with `[ ]`.
+2. Document all methods and functions with a short docstring explaining:
+   - Purpose
+   - Parameters
+   - Return value
+3. At the top of each file, add a comment describing:
+   - The file’s purpose and any unique considerations (e.g., external library usage).
+   - The date or version if relevant.
+4. If a section is not relevant to a current feature, annotate with `[[ Not relevant to this feature ]]`.
+5. Keep `CHANGELOG.md` updated with user-facing changes.  
+6. Use calls to existing endpoints from `implementation.md`; do not overwrite database info in config files without explicit instruction.
+
+---
+
+## 9. Frontend-Specific Rules
+
+1. For React components, specify `use client` or `use server` if using Next.js or a similar framework that differentiates.
+2. Maintain visual spacing in JSX with blank lines for readability.
+3. Use Redux or Zustand as your store pattern.
+   - If using Zustand:
+     1. Define an `initialState` constant.
+     2. Export a `use{Entity}Store` hook.
+     3. Include standard actions: `setData`, `addItem`, `setLoading`, `setError`, `reset`.
+     4. Handle loading/error states from the store in components.
+     5. Clean up store state on unmount with `reset()`.
+4. Data Fetching:
+   - For capabilities requiring server data, use server components or server actions (if applicable) and pass data as props.
+   - Manage global loading/error states in the store.
+
+---
+
+## 10. Backend-Specific Rules
+
+1. Database Schema:
+   - Include `createdAt` and `updatedAt` columns in all tables.
+   - Use enums for limited value sets (e.g., membership: `['free','pro']`).
+2. CRUD Actions:
+   - Follow Create, Read, Update, Delete patterns systematically.
+   - Provide meaningful error handling and logging in each method.
+3. Keep all environment variables in `.env.*` files.  
+4. If additional routes or controllers are needed, follow naming guidelines and update `implementation.md` accordingly.
+
+---
+
+## 11. Development Workflow
+
+1. Create feature branches for larger changes.  
+2. Merge changes into `dev` or a staging branch before production.  
+3. Use semantic versioning (`MAJOR.MINOR.PATCH`) for official releases.  
+4. Maintain a `CHANGELOG.md` to log version updates and major features.  
+5. Use the mark-off and timestamp method for tasks in `roadmap.md` (e.g., `- [x] Add user presence UI (2024-01-13 02:30 EST)`).
+
+---
+
+## 11. Configuration Files
+
+1. Never modify configuration files (e.g. `.env`, `application.yml`, `config.json`) that other files depend on.
+2. Instead, adapt the code to match existing configuration files.
+3. Only modify configuration files when:
+   - Explicitly requested by the user
+   - Adding new variables that don't conflict with existing ones
+   - After confirming with the user that the change won't break existing functionality
+4. Document any configuration dependencies in file-level comments.
+
+---
+
+**By following these rules, we ensure consistency, clarity, and maintainability across the entire project—covering database schemas, backend services, frontend React components, and documentation processes.**
