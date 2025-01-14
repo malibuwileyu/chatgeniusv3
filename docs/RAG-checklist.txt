@@ -26,36 +26,50 @@ Below is a more detailed breakdown of Steps 1 and 2, including every small task 
    - [x] Verify each entry has a unique ID, the relevant text, and important metadata (2024-01-19 15:30 EST)
 
 4. Chunk or Prepare Message Content  
-   - [ ] Decide whether messages require splitting. If so, segment longer content into smaller parts.  
-   - [ ] If you do use splits, store references to the original message ID in each chunk’s metadata.
+   - [x] Decide whether messages require splitting. If so, segment longer content into smaller parts. (2024-01-19 16:15 EST)
+   - [x] If you do use splits, store references to the original message ID in each chunk's metadata. (2024-01-19 16:20 EST)
 
 5. Generate Embeddings (Using LangChain)  
-   - [ ] Set up a LangChain embeddings object tied to your OpenAI credentials.  
-   - [ ] For each message (or chunk), retrieve embeddings via LangChain’s pipeline (no extraneous tokens or formatting).  
-   - [ ] Keep the returned vectors in memory or a list, ensuring you maintain references to the original message metadata.
+   - [x] Set up a LangChain embeddings object tied to your OpenAI credentials. (2024-01-19 16:25 EST)
+   - [x] For each message (or chunk), retrieve embeddings via LangChain's pipeline (no extraneous tokens or formatting). (2024-01-19 16:35 EST)
+   - [x] Keep the returned vectors in memory or a list, ensuring you maintain references to the original message metadata. (2024-01-19 16:40 EST)
 
 6. Upsert Embeddings to the Vector Database  
-   - [ ] Connect to your vector store using LangChain’s VectorStore integrations (e.g., a Pinecone instance).  
-   - [ ] Make sure you create or reference the correct index/namespace as required.  
-   - [ ] Insert or upsert each item, providing the vector, unique ID, and original text or metadata.
+   - [x] Connect to your vector store using LangChain's VectorStore integrations (e.g., a Pinecone instance). (2024-01-19 16:45 EST)
+   - [x] Make sure you create or reference the correct index/namespace as required. (2024-01-19 16:50 EST)
+   - [x] Insert or upsert each item, providing the vector, unique ID, and original text or metadata. (2024-01-19 17:15 EST)
 
 7. Validate the Upsert  
-   - [ ] Query your vector DB (via LangChain or your chosen library) for random items.  
-   - [ ] Ensure you get the correct matches, and that your dataset count matches your expectation.
+   - [x] Query your vector DB (via LangChain or your chosen library) for random items. (2024-01-19 17:45 EST)
+   - [x] Ensure you get the correct matches, and that your dataset count matches your expectation. (2024-01-19 18:00 EST)
 
 8. Keep the Script Maintained  
-   - [ ] Save your embedding or indexing script (e.g., embedMessages.js or embedMessages.py) with clear documentation about usage.  
-   - [ ] Schedule or plan a process to re-embed new messages or updates periodically.
+   - [x] Save your embedding or indexing script (e.g., embedMessages.js or embedMessages.py) with clear documentation about usage. (2024-01-19 18:15 EST)
+   - [x] Schedule or plan a process to re-embed new messages or updates periodically. (2024-01-19 18:30 EST)
+     Plan for Re-embedding Process (To be implemented during Step 2):
+     1. Add a last_embedded_at timestamp column to the messages table
+     2. Modify embedMessages.js to:
+        - Track the last successful embedding timestamp
+        - Only fetch messages newer than the last embedding
+        - Update last_embedded_at after successful embedding
+     3. Set up a scheduled task (e.g., cron job) to run every 5 minutes:
+        - Check for new unembedded messages
+        - Run embedMessages.js if new messages exist
+        - Log embedding results for monitoring
+     4. Add monitoring and alerts:
+        - Track embedding success/failure rates
+        - Alert on consecutive failures
+        - Monitor vector store size and costs
 
 ---
 
 ## Step 2: Query the Vector Database and Generate an LLM Answer
 
-1. Create an “Ask” or “Search” Endpoint in Your Backend  
+1. Create an "Ask" or "Search" Endpoint in Your Backend  
    - [ ] Expose a new route (e.g., POST /api/ask) to receive user queries.  
    - [ ] Enforce any required auth or rate-limiting rules.
 
-2. Embed the User’s Query (Using LangChain)  
+2. Embed the User's Query (Using LangChain)  
    - [ ] Use the same embeddings object from Step 1 to embed the user input.  
    - [ ] Keep the pipeline consistent with your earlier configuration so embeddings match.
 
@@ -64,8 +78,8 @@ Below is a more detailed breakdown of Steps 1 and 2, including every small task 
    - [ ] Return or collect the text and metadata for inclusion in the LLM prompt.
 
 4. Construct a Prompt for the LLM  
-   - [ ] Combine retrieved content into a “context block.”  
-   - [ ] Append the user’s query after that context, ensuring the AI sees the relevant background.  
+   - [ ] Combine retrieved content into a "context block."  
+   - [ ] Append the user's query after that context, ensuring the AI sees the relevant background.  
    - [ ] If using chat-based requests, structure them accordingly; otherwise, keep it a single prompt string.
 
 5. Send the Prompt to OpenAI (Using LangChain)  
@@ -73,23 +87,30 @@ Below is a more detailed breakdown of Steps 1 and 2, including every small task 
    - [ ] Use your LangChain chain or direct LLM calls to process the combined context and user question.
 
 6. Parse and Return the Answer  
-   - [ ] Extract the full text from the LLM’s response.  
+   - [ ] Extract the full text from the LLM's response.  
    - [ ] Return it as JSON (e.g., { answer: "..." }) to the calling UI or service.  
    - [ ] Handle any errors or fallback paths gracefully.
 
-7. Integrate into Your UI  
-   - [ ] In the client (frontend), create or update a function to call /api/ask with the user’s query.  
+7. Implement Continuous Re-embedding Process
+   - [ ] Add last_embedded_at timestamp column to messages table
+   - [ ] Update embedMessages.js to track and use last embedding timestamp
+   - [ ] Set up 5-minute cron job for checking and embedding new messages
+   - [ ] Implement monitoring and alerts for embedding process
+   - [ ] Test re-embedding with new messages before UI integration
+
+8. Integrate into Your UI  
+   - [ ] In the client (frontend), create or update a function to call /api/ask with the user's query.  
    - [ ] Display the returned answer.  
    - [ ] Provide loading states or error messages as needed.
 
-8. Confirm End-to-End Works  
+9. Confirm End-to-End Works  
    - [ ] Start your full stack and test a query that should retrieve known context.  
    - [ ] Check logs for errors.  
    - [ ] Confirm that the references in the final answer align with the embedded data.
 
-9. (Optional) Further Optimizations  
-   - [ ] Add caching, re-ranking, or advanced prompt engineering if you see repeated queries.  
-   - [ ] Consider strategies for chunk overlap or dynamic query expansion.  
-   - [ ] Explore advanced LangChain features (memory objects, custom chains, etc.) as your app grows in complexity.
+10. (Optional) Further Optimizations  
+    - [ ] Add caching, re-ranking, or advanced prompt engineering if you see repeated queries.  
+    - [ ] Consider strategies for chunk overlap or dynamic query expansion.  
+    - [ ] Explore advanced LangChain features (memory objects, custom chains, etc.) as your app grows in complexity.
 
 ---

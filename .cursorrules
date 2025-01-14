@@ -14,6 +14,11 @@ Below is a consolidated set of rules and guidelines for maintaining best practic
    - Author information (optional).  
    - Any relevant usage notes or references.
 5. Use Auth0 for all authentication needs.
+6. Leverage existing dependencies:
+   - Before adding new dependencies, check if existing ones can fulfill the requirement
+   - Avoid installing alternative packages that duplicate functionality
+   - If multiple dependencies can handle a task, use the one already in the project
+   - Only add new dependencies when they provide unique, necessary functionality not available in existing packages
 
 ---
 
