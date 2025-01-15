@@ -1,0 +1,7 @@
+Phase 1: Basic RAG Implementation
+...
+Step 8: Keep the Script Maintained
+- [x] Monitor vector store stats and embedding costs (2025-01-15 19:05 EST)
+- [ ] Track performance metrics (query times, embedding times)
+- [ ] Set up error logging and monitoring
+- [ ] Create maintenance documentation 

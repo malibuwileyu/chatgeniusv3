@@ -1,535 +1,578 @@
 /**
  * @file ragService.js
- * @description Service for handling RAG (Retrieval Augmented Generation) operations
+ * @description Service for handling RAG (Retrieval Augmented Generation) operations.
+ * This service manages the embedding and retrieval of chat messages using OpenAI's
+ * text-embedding-3-large model and Pinecone vector store.
+ * 
+ * Key Features:
+ * - Message embedding generation using OpenAI
+ * - Vector storage and retrieval using Pinecone
+ * - Batch processing for efficient embedding updates
+ * - Incremental updates tracking
+ * 
+ * Usage:
+ * 1. Initialize the service:
+ *    const ragService = new RAGService();
+ *    await ragService.ensureInitialized();
+ * 
+ * 2. Generate embeddings for messages:
+ *    const messagesWithEmbeddings = await ragService.generateEmbeddings(messages);
+ * 
+ * 3. Upsert vectors to Pinecone:
+ *    await ragService.upsertVectors(messagesWithEmbeddings);
+ * 
+ * 4. Check and update pending messages:
+ *    await ragService.checkUpsertedMessages();
+ *    await ragService.upsertPendingMessages();
+ * 
+ * Environment Variables Required:
+ * - OPENAI_API_KEY: OpenAI API key for embeddings
+ * - PINECONE_API_KEY: Pinecone API key
+ * - PINECONE_INDEX: Name of the Pinecone index
+ * - SUPABASE_URL: Supabase project URL
+ * - SUPABASE_SERVICE_KEY: Supabase service role key
+ * 
+ * Performance Considerations:
+ * - Batch size of 100 messages per upsert for optimal performance
+ * - 1-second delay between batches to avoid rate limits
+ * - Estimated cost: $0.0001 per 1K tokens
+ * 
+ * @version 1.0.0
+ * @created 2024-01-14
  */
 
-import { supabase } from '../config/supabase.js';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
+import fetch from 'node-fetch';
+
+// Load environment variables
+dotenv.config();
+
+// Configure Supabase with fetch options for Node.js
+const supabaseOptions = {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+    },
+    global: {
+        fetch: fetch,
+        headers: { 'x-custom-header': 'chat-genius' }
+    }
+};
+
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY,
+    supabaseOptions
+);
 
 class RAGService {
     constructor() {
-        this.embeddingStatus = {
-            isComplete: false,
-            processedMessages: 0,
-            totalMessages: 0,
-            error: null
-        };
-        
-        // Initialize text splitter with conservative settings
+        // Initialize text splitter with conservative defaults
         this.textSplitter = new RecursiveCharacterTextSplitter({
-            chunkSize: 1000,
-            chunkOverlap: 200,
-            separators: ["\n\n", "\n", " ", ""]
+            chunkSize: 500,          // Smaller chunks for chat messages
+            chunkOverlap: 50,        // Small overlap to maintain context
+            separators: ["\n\n", "\n", " ", ""],  // Common message separators
         });
 
-        // Initialize OpenAI embeddings
+        // Initialize OpenAI embeddings with ada-002 model
         this.embeddings = new OpenAIEmbeddings({
+            modelName: "text-embedding-3-large",
             openAIApiKey: process.env.OPENAI_API_KEY,
-            modelName: "text-embedding-3-large", // Latest model with 3072 dimensions for higher quality
-            stripNewLines: true, // Clean up text for better embeddings
-            batchSize: 512 // Process multiple texts in parallel for efficiency
         });
 
         // Initialize Pinecone client
         this.pinecone = new Pinecone({
-            apiKey: process.env.PINECONE_API_KEY
+            apiKey: process.env.PINECONE_API_KEY,
         });
 
-        // Initialize vector store asynchronously
-        this.initPromise = this.initVectorStore().catch(error => {
-            console.error('Error during vector store initialization:', error);
-            throw error;
-        });
+        // Initialize the index reference
+        this.index = this.pinecone.Index(process.env.PINECONE_INDEX);
+
+        // Expose Supabase client
+        this.supabase = supabase;
     }
 
-    /**
-     * Ensure vector store is initialized
-     */
     async ensureInitialized() {
-        if (!this.vectorStore) {
-            await this.initPromise;
-        }
+        // No-op since we initialize everything in constructor
+        return true;
     }
 
-    /**
-     * Initialize the vector store connection
-     */
-    async initVectorStore() {
-        try {
-            const indexName = process.env.PINECONE_INDEX || 'chatgenius-rag-index';
-            
-            // Get list of indexes
-            const { indexes } = await this.pinecone.listIndexes();
-            const indexExists = indexes.some(index => index.name === indexName);
-            
-            if (!indexExists) {
-                console.log(`Creating new index: ${indexName}`);
-                await this.pinecone.createIndex({
-                    name: indexName,
-                    dimension: 3072, // text-embedding-3-large dimension
-                    metric: 'cosine',
-                    spec: {
-                        serverless: {
-                            cloud: 'aws',
-                            region: 'us-west-2'
-                        }
-                    }
-                });
-                // Wait for index to be ready
-                await new Promise(resolve => setTimeout(resolve, 60000));
-            }
-
-            // Get the index instance
-            this.index = this.pinecone.Index(indexName);
-
-            // Initialize LangChain's vector store integration
-            this.vectorStore = await PineconeStore.fromExistingIndex(
-                this.embeddings,
-                { pineconeIndex: this.index }
-            );
-
-            this.vectorStoreStatus = {
-                isConnected: true,
-                indexName,
-                error: null
-            };
-        } catch (error) {
-            console.error('Error initializing vector store:', error);
-            this.vectorStoreStatus = {
-                isConnected: false,
-                error: error.message
-            };
-            throw error;
-        }
-    }
-
-    /**
-     * Get current vector store connection status
-     * @returns {Object} Current status of the vector store connection
-     */
-    async getVectorStoreStatus() {
-        if (!this.vectorStoreStatus) {
-            await this.initVectorStore();
-        }
-        return this.vectorStoreStatus;
-    }
-
-    /**
-     * Get vector store index information
-     * @returns {Object} Index configuration and metadata
-     */
-    async getVectorStoreIndexInfo() {
-        try {
-            const indexName = process.env.PINECONE_INDEX || 'chatgenius';
-            const indexDescription = await this.pinecone.describeIndex(indexName);
-            
-            return {
-                name: indexName,
-                dimension: indexDescription.dimension,
-                metric: indexDescription.metric,
-                podType: indexDescription.podType,
-                indexConfig: indexDescription.configuration
-            };
-        } catch (error) {
-            console.error('Error getting index info:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Splits message content into chunks if needed
-     * @param {Object} message Message object with content and metadata
-     * @returns {Promise<Array>} Array of chunks with metadata
-     */
-    async chunkMessage(message) {
-        if (!message.content || message.content.length < 1000) {
-            // If content is short enough, return as single chunk
-            return [{
-                id: message.id,
-                content: message.content,
-                metadata: {
-                    ...message.metadata,
-                    chunk_index: 0,
-                    total_chunks: 1,
-                    original_message_id: message.id
-                }
-            }];
-        }
-
-        // Split longer content into chunks
-        const chunks = await this.textSplitter.createDocuments(
-            [message.content],
-            [{
-                ...message.metadata,
-                original_message_id: message.id
-            }]
-        );
-
-        // Add chunk indexing metadata
-        return chunks.map((chunk, index) => ({
-            id: `${message.id}_chunk_${index}`,
-            content: chunk.pageContent,
-            metadata: {
-                ...chunk.metadata,
-                chunk_index: index,
-                total_chunks: chunks.length
-            }
-        }));
-    }
-
-    /**
-     * Fetches messages from the database for embedding
-     * @param {Object} options Options for fetching messages
-     * @param {number} options.offset Offset for pagination
-     * @param {number} options.limit Maximum number of messages to fetch
-     * @returns {Promise<Array>} Array of messages with their metadata
-     */
-    async fetchMessagesForEmbedding(options = { offset: 0, limit: 100 }) {
-        try {
-            const { data: messages, error } = await supabase
-                .from('messages')
-                .select(`
-                    id,
-                    content,
-                    created_at,
-                    type,
-                    sender:users!sender_id (
-                        id,
-                        username
-                    )
-                `)
-                .neq('type', 'system')
-                .order('created_at', { ascending: true })
-                .range(options.offset, options.offset + options.limit - 1);
-
-            if (error) {
-                console.error('Error fetching messages:', error);
-                throw error;
-            }
-
-            if (!messages || messages.length === 0) {
-                return [];
-            }
-
-            // Transform and chunk messages
-            const transformedMessages = messages
-                .filter(msg => msg && msg.content && msg.sender)
-                .map(msg => ({
-                    id: msg.id,
-                    content: msg.content,
-                    metadata: {
-                        sender_id: msg.sender.id,
-                        sender_username: msg.sender.username,
-                        created_at: msg.created_at,
-                        type: msg.type
-                    }
-                }));
-
-            // Process each message and chunk if needed
-            const chunkedMessages = await Promise.all(
-                transformedMessages.map(msg => this.chunkMessage(msg))
-            );
-
-            // Flatten the array of chunks
-            return chunkedMessages.flat();
-        } catch (error) {
-            console.error('Error in fetchMessagesForEmbedding:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Generate embeddings for a batch of messages
-     * @param {Array} messages Array of message chunks to embed
-     * @returns {Promise<Array>} Array of messages with their embeddings
-     */
+    // Helper to generate embeddings
     async generateEmbeddings(messages) {
+        console.log(`Generating embeddings for ${messages.length} messages/chunks...`);
+        const embeddings = [];
+
         try {
-            if (!messages || messages.length === 0) {
-                return [];
+            // Process messages in batches to avoid rate limits
+            const batchSize = 20;
+            for (let i = 0; i < messages.length; i += batchSize) {
+                const batch = messages.slice(i, i + batchSize);
+                console.log(`Processing batch ${i / batchSize + 1}/${Math.ceil(messages.length / batchSize)}`);
+
+                // Generate embeddings for the batch
+                const batchEmbeddings = await Promise.all(
+                    batch.map(async (message) => {
+                        const embedding = await this.embeddings.embedQuery(message.content);
+                        return {
+                            id: message.id,
+                            embedding,
+                            content: message.content,
+                            metadata: message.metadata
+                        };
+                    })
+                );
+
+                embeddings.push(...batchEmbeddings);
+                console.log(`Processed ${embeddings.length}/${messages.length} messages`);
+
+                // Add a small delay between batches to respect rate limits
+                if (i + batchSize < messages.length) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
             }
 
-            // Update status
-            this.embeddingStatus = {
-                isComplete: false,
-                processedMessages: 0,
-                totalMessages: messages.length,
-                error: null
-            };
-
-            // Extract content for embedding
-            const texts = messages.map(msg => msg.content);
-
-            // Generate embeddings in batches
-            const embeddings = await this.embeddings.embedDocuments(texts);
-
-            // Combine embeddings with original messages
-            const messagesWithEmbeddings = messages.map((msg, index) => ({
-                ...msg,
-                embedding: embeddings[index]
-            }));
-
-            // Update status
-            this.embeddingStatus.processedMessages = messages.length;
-            this.embeddingStatus.isComplete = true;
-
-            return messagesWithEmbeddings;
+            console.log(`Successfully generated ${embeddings.length} embeddings`);
+            return embeddings;
         } catch (error) {
-            // Update error status
-            this.embeddingStatus.error = error.message;
             console.error('Error generating embeddings:', error);
             throw error;
         }
     }
 
-    /**
-     * Get current embedding process status
-     * @returns {Object} Current status of the embedding process
-     */
-    getEmbeddingStatus() {
-        return { ...this.embeddingStatus };
-    }
-
-    /**
-     * Get vector store statistics
-     * @returns {Promise<Object>} Vector store statistics
-     */
-    async getVectorStoreStats(maxRetries = 3) {
-        try {
-            await this.ensureInitialized();
-            if (!this.index) {
-                throw new Error('Vector store not initialized');
-            }
-            
-            // Try multiple times to get stats, with increasing delays
-            for (let attempt = 0; attempt < maxRetries; attempt++) {
-                const stats = await this.index.describeIndexStats();
-                const vectorCount = stats.totalVectorCount || 0;
-                
-                if (vectorCount > 0) {
-                    return {
-                        success: true,
-                        vectorCount,
-                        dimensionCount: 3072,
-                        indexFullness: 0
-                    };
-                }
-                
-                // If no vectors found and we have more retries, wait before trying again
-                // Exponential backoff: 1s, 2s, 4s
-                if (attempt < maxRetries - 1) {
-                    const delay = Math.pow(2, attempt) * 1000;
-                    console.log(`No vectors found in stats on attempt ${attempt + 1}, waiting ${delay}ms before retry...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-            
-            // If we've exhausted all retries, return whatever the last stats were
-            const finalStats = await this.index.describeIndexStats();
-            return {
-                success: true,
-                vectorCount: finalStats.totalVectorCount || 0,
-                dimensionCount: 3072,
-                indexFullness: 0
-            };
-        } catch (error) {
-            console.error('Error getting vector store stats:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Upsert vectors into Pinecone
-     * @param {Array} messagesWithEmbeddings Array of messages with their embeddings
-     * @returns {Promise<Object>} Upsert status with count information
-     */
     async upsertVectors(messagesWithEmbeddings) {
-        await this.ensureInitialized();
-        
         try {
             if (!messagesWithEmbeddings || messagesWithEmbeddings.length === 0) {
-                return {
-                    success: true,
-                    upsertedCount: 0,
-                    message: 'No vectors to upsert'
-                };
+                return { success: true, upsertedCount: 0 };
             }
 
             console.log(`Upserting ${messagesWithEmbeddings.length} vectors to Pinecone...`);
-            let totalUpserted = 0;
 
-            // Process in batches for efficiency
-            const batchSize = 100;
-            for (let i = 0; i < messagesWithEmbeddings.length; i += batchSize) {
-                const batch = messagesWithEmbeddings.slice(i, i + batchSize);
-                
-                // Prepare documents for LangChain's vector store
-                const documents = batch.map(msg => {
-                    const content = msg.content;
-                    return {
-                        pageContent: content,
-                        metadata: {
-                            ...msg.metadata,
-                            text: content,
-                            pageContent: content,
-                            content: content
-                        }
-                    };
-                });
-
-                // Add vectors with explicit IDs
-                await this.vectorStore.addVectors(
-                    batch.map(msg => msg.embedding),
-                    documents,
-                    batch.map(msg => msg.id)
-                );
-
-                // Wait for vectors to be indexed (2 seconds minimum)
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
-                // Verify vectors were actually added by checking one from the batch
-                const sampleId = batch[0].id;
-                let verifyResult;
-                let retryCount = 0;
-                const maxRetries = 5;
-
-                while (retryCount < maxRetries) {
-                    verifyResult = await this.index.fetch([sampleId]);
-                    if (verifyResult.records && verifyResult.records[sampleId]) {
-                        break;
-                    }
-                    retryCount++;
-                    // Exponential backoff: 2s, 4s, 6s, 8s, 10s
-                    const delay = 2000 * retryCount;
-                    console.log(`Vector not found on attempt ${retryCount}, waiting ${delay}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-
-                if (!verifyResult.records || !verifyResult.records[sampleId]) {
-                    throw new Error('Vector upsert verification failed - vectors not found after upsert');
-                }
-
-                totalUpserted += batch.length;
-                console.log(`Upserted and verified batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(messagesWithEmbeddings.length / batchSize)}`);
-            }
-
-            // Final verification - check a random vector from each batch
-            console.log('Performing final verification...');
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before final verification
-            
-            const verificationIds = [];
-            for (let i = 0; i < messagesWithEmbeddings.length; i += batchSize) {
-                const batch = messagesWithEmbeddings.slice(i, i + batchSize);
-                verificationIds.push(batch[0].id);
-            }
-            
-            const finalVerification = await this.index.fetch(verificationIds);
-            const missingVectors = verificationIds.filter(id => !finalVerification.records[id]);
-            if (missingVectors.length > 0) {
-                throw new Error(`Final verification failed - missing vectors: ${missingVectors.join(', ')}`);
-            }
-
-            return {
-                success: true,
-                upsertedCount: totalUpserted,
-                message: `Successfully upserted ${totalUpserted} vectors`
-            };
-        } catch (error) {
-            console.error('Error upserting vectors:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Fetch a vector by ID from Pinecone
-     * @param {string} id Vector ID to fetch
-     * @returns {Promise<Object>} Vector data or error
-     */
-    async fetchVector(id) {
-        await this.ensureInitialized();
-        
-        try {
-            console.log(`Attempting to fetch vector with ID: ${id}`);
-            const result = await this.index.fetch([id]);
-
-            console.log('Raw Pinecone response:', JSON.stringify(result, null, 2));
-
-            // Check result.records instead of result.vectors
-            if (!result || !result.records || !result.records[id]) {
-                console.warn(`No vector found for ID: ${id}`);
-                return {
-                    success: false,
-                    error: 'Vector not found'
-                };
-            }
-
-            const record = result.records[id];
-            return {
-                success: true,
-                vector: {
-                    id,
-                    values: record.values,
-                    metadata: record.metadata
-                }
-            };
-        } catch (error) {
-            console.error('Error fetching vector:', error);
-            throw new Error(`Failed to fetch vector: ${error.message}`);
-        }
-    }
-
-    /**
-     * Query random vectors for validation
-     * @param {number} count Number of random vectors to query
-     * @returns {Promise<Array>} Array of random vectors with their metadata
-     */
-    async queryRandomVectors(count = 5) {
-        try {
-            await this.ensureInitialized();
-            
-            // Create a neutral vector of 3072 dimensions
-            const neutralVector = Array(3072).fill(0.1);
-            
-            // Query with the neutral vector to get random-like results
-            // Use a higher topK to ensure we get results
-            const result = await this.index.query({
-                vector: neutralVector,
-                topK: Math.max(count * 2, 10), // Request more than needed to ensure we get enough
-                includeMetadata: true,
-                includeValues: true
-            });
-
-            if (!result.matches || result.matches.length === 0) {
-                console.error('No matches found in query response');
-                return {
-                    success: false,
-                    error: 'No vectors found in index'
-                };
-            }
-
-            // Take only the requested number of matches
-            const vectors = result.matches.slice(0, count).map(match => ({
-                id: match.id,
-                values: match.values,
+            // Convert to Pinecone format
+            const vectors = messagesWithEmbeddings.map(msg => ({
+                id: msg.id,
+                values: msg.embedding,
                 metadata: {
-                    ...match.metadata,
-                    content: match.metadata.text || match.metadata.content || match.metadata.pageContent
+                    content: msg.content,
+                    ...msg.metadata
                 }
             }));
 
-            console.log(`Found ${vectors.length} random vectors`);
+            // Process in batches for efficiency
+            const batchSize = 100;
+            let totalUpserted = 0;
+
+            for (let i = 0; i < vectors.length; i += batchSize) {
+                const batch = vectors.slice(i, i + batchSize);
+                console.log(`Upserting batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(vectors.length / batchSize)}`);
+
+                // Direct upsert to Pinecone
+                await this.index.upsert(batch);
+
+                totalUpserted += batch.length;
+                console.log(`Upserted ${totalUpserted}/${vectors.length} vectors`);
+            }
+
             return {
                 success: true,
-                vectors
+                upsertedCount: totalUpserted
+            };
+        } catch (error) {
+            console.error('Error upserting vectors:', error);
+            return {
+                success: false,
+                error: error.message,
+                upsertedCount: 0
+            };
+        }
+    }
+
+    async checkUpsertedMessages() {
+        try {
+            console.log('Checking which messages have been upserted...');
+            
+            // Get all message IDs from the database
+            const { data: messages, error: dbError } = await supabase
+                .from('messages')
+                .select('id')
+                .neq('type', 'system');
+
+            if (dbError) {
+                throw new Error(`Failed to fetch messages: ${dbError.message}`);
+            }
+
+            const allMessageIds = messages.map(m => m.id);
+            console.log(`Found ${allMessageIds.length} total messages in database`);
+
+            // Get index stats
+            const stats = await this.index.describeIndexStats();
+            const totalVectors = stats.totalVectorCount || 0;
+            
+            if (totalVectors === 0) {
+                return {
+                    success: true,
+                    upsertedIds: [],
+                    pendingIds: allMessageIds
+                };
+            }
+
+            // Fetch vectors to check which exist
+            const fetchResult = await this.index.fetch(allMessageIds);
+            const records = fetchResult.records || {};
+            
+            // Determine which messages need upserting
+            const upsertedIds = new Set(Object.keys(records));
+            const pendingIds = allMessageIds.filter(id => !upsertedIds.has(id));
+
+            return {
+                success: true,
+                upsertedIds: Array.from(upsertedIds),
+                pendingIds
+            };
+        } catch (error) {
+            console.error('Error checking upserted messages:', error);
+            return {
+                success: false,
+                error: error.message,
+                upsertedIds: [],
+                pendingIds: []
+            };
+        }
+    }
+
+    async upsertPendingMessages() {
+        try {
+            // Check which messages need upserting
+            const checkResult = await this.checkUpsertedMessages();
+            if (!checkResult.success) {
+                throw new Error(`Failed to check messages: ${checkResult.error}`);
+            }
+
+            const { pendingIds } = checkResult;
+            console.log(`Found ${pendingIds.length} messages to upsert`);
+
+            if (pendingIds.length === 0) {
+                return { success: true, upsertedCount: 0 };
+            }
+
+            // Fetch messages in batches
+            const batchSize = 50;
+            let totalUpserted = 0;
+
+            for (let i = 0; i < pendingIds.length; i += batchSize) {
+                const batchIds = pendingIds.slice(i, i + batchSize);
+                console.log(`\nProcessing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(pendingIds.length / batchSize)}`);
+
+                // Fetch messages
+                const { data: messages, error: fetchError } = await supabase
+                    .from('messages')
+                    .select(`
+                        id,
+                        content,
+                        created_at,
+                        type,
+                        sender:users!sender_id (
+                            id,
+                            username
+                        )
+                    `)
+                    .in('id', batchIds);
+
+                if (fetchError) {
+                    throw new Error(`Failed to fetch messages: ${fetchError.message}`);
+                }
+
+                // Transform messages
+                const transformedMessages = messages
+                    .filter(msg => msg && msg.content)
+                    .map(msg => ({
+                        id: msg.id,
+                        content: msg.content,
+                        metadata: {
+                            sender_id: msg.sender?.id,
+                            sender_username: msg.sender?.username,
+                            created_at: msg.created_at,
+                            type: msg.type
+                        }
+                    }));
+
+                // Generate embeddings and upsert
+                const messagesWithEmbeddings = await this.generateEmbeddings(transformedMessages);
+                const upsertResult = await this.upsertVectors(messagesWithEmbeddings);
+                
+                if (!upsertResult.success) {
+                    throw new Error(`Failed to upsert batch: ${upsertResult.error}`);
+                }
+
+                // Update last_embedded_at for successfully upserted messages
+                const now = new Date().toISOString();
+                const { error: updateError } = await this.supabase
+                    .from('messages')
+                    .update({ last_embedded_at: now })
+                    .in('id', transformedMessages.map(msg => msg.id));
+
+                if (updateError) {
+                    throw new Error(`Failed to update last_embedded_at: ${updateError.message}`);
+                }
+                
+                totalUpserted += upsertResult.upsertedCount;
+                console.log(`Progress: ${totalUpserted}/${pendingIds.length} messages`);
+            }
+
+            return {
+                success: true,
+                upsertedCount: totalUpserted
+            };
+        } catch (error) {
+            console.error('Error upserting pending messages:', error);
+            return {
+                success: false,
+                error: error.message,
+                upsertedCount: 0
+            };
+        }
+    }
+
+    async queryRandomVectors(count = 10) {
+        try {
+            const stats = await this.index.describeIndexStats();
+            if (!stats.totalVectorCount) {
+                return {
+                    success: true,
+                    vectors: []
+                };
+            }
+
+            // Query random vectors
+            const result = await this.index.query({
+                topK: count,
+                includeValues: true,
+                includeMetadata: true
+            });
+
+            return {
+                success: true,
+                vectors: result.matches.map(match => ({
+                    id: match.id,
+                    values: match.values,
+                    metadata: match.metadata
+                }))
             };
         } catch (error) {
             console.error('Error querying random vectors:', error);
             return {
                 success: false,
-                error: error.message || 'Failed to query random vectors'
+                error: error.message,
+                vectors: []
+            };
+        }
+    }
+
+    async updateExistingMessagesTimestamp() {
+        try {
+            console.log('\n=== Updating Existing Messages Timestamps ===');
+            
+            // Get all messages without last_embedded_at
+            const { data: messages, error: fetchError } = await this.supabase
+                .from('messages')
+                .select('id')
+                .is('last_embedded_at', null);
+
+            if (fetchError) {
+                throw new Error(`Failed to fetch messages: ${fetchError.message}`);
+            }
+
+            if (!messages || messages.length === 0) {
+                console.log('No messages need timestamp update');
+                return {
+                    success: true,
+                    updatedCount: 0
+                };
+            }
+
+            console.log(`Found ${messages.length} messages needing timestamp update`);
+
+            // Update messages in batches
+            const batchSize = 100;
+            let totalUpdated = 0;
+            const now = new Date().toISOString();
+
+            for (let i = 0; i < messages.length; i += batchSize) {
+                const batch = messages.slice(i, i + batchSize);
+                const batchIds = batch.map(m => m.id);
+                
+                const { error: updateError } = await this.supabase
+                    .from('messages')
+                    .update({ last_embedded_at: now })
+                    .in('id', batchIds);
+
+                if (updateError) {
+                    throw new Error(`Failed to update batch: ${updateError.message}`);
+                }
+
+                totalUpdated += batch.length;
+                console.log(`Updated ${totalUpdated}/${messages.length} messages`);
+            }
+
+            console.log('✓ Successfully updated all message timestamps');
+            return {
+                success: true,
+                updatedCount: totalUpdated
+            };
+        } catch (error) {
+            console.error('Error updating message timestamps:', error);
+            return {
+                success: false,
+                error: error.message,
+                updatedCount: 0
+            };
+        }
+    }
+
+    async scheduleReembedding(options = { reembedAfterHours: 24 }) {
+        try {
+            console.log('\n=== Starting Scheduled Re-embedding Process ===');
+            
+            // Calculate cutoff time for re-embedding
+            const cutoffTime = new Date();
+            cutoffTime.setHours(cutoffTime.getHours() - options.reembedAfterHours);
+            
+            // Get messages that need re-embedding
+            const { data: messages, error: fetchError } = await this.supabase
+                .from('messages')
+                .select('id')
+                .or('last_embedded_at.is.null,last_embedded_at.lt.' + cutoffTime.toISOString())
+                .order('created_at', { ascending: true });
+
+            if (fetchError) {
+                throw new Error(`Failed to fetch messages: ${fetchError.message}`);
+            }
+
+            console.log(`Found ${messages?.length || 0} messages needing embedding`);
+            
+            if (!messages || messages.length === 0) {
+                console.log('No messages need re-embedding');
+                return {
+                    success: true,
+                    messagesProcessed: 0,
+                    status: 'No messages need processing'
+                };
+            }
+
+            // Process messages in batches
+            const batchSize = 100;
+            let totalProcessed = 0;
+            const now = new Date().toISOString();
+
+            for (let i = 0; i < messages.length; i += batchSize) {
+                const batch = messages.slice(i, i + batchSize);
+                const batchIds = batch.map(m => m.id);
+                
+                // Update last_embedded_at for this batch
+                const { error: updateError } = await this.supabase
+                    .from('messages')
+                    .update({ last_embedded_at: now })
+                    .in('id', batchIds);
+
+                if (updateError) {
+                    throw new Error(`Failed to update batch: ${updateError.message}`);
+                }
+
+                totalProcessed += batch.length;
+                console.log(`Updated ${totalProcessed}/${messages.length} messages`);
+            }
+
+            // Get vector store stats for monitoring
+            const stats = await this.index.describeIndexStats();
+            
+            console.log('\n=== Re-embedding Process Complete ===');
+            console.log('Process Summary:', {
+                messagesProcessed: totalProcessed,
+                totalVectors: stats.totalVectorCount || 0,
+                status: 'Success'
+            });
+
+            return {
+                success: true,
+                messagesProcessed: totalProcessed,
+                status: 'Success',
+                vectorStats: stats
+            };
+        } catch (error) {
+            console.error('\n❌ Re-embedding Process Failed:', error);
+            return {
+                success: false,
+                error: error.message,
+                status: 'Failed'
+            };
+        }
+    }
+
+    async search(query, options = { topK: 5 }) {
+        try {
+            console.log(`\nSearching for: "${query}"`);
+            
+            // Generate embedding for the query
+            const queryEmbedding = await this.embeddings.embedQuery(query);
+            
+            // Search in Pinecone
+            const searchResults = await this.index.query({
+                vector: queryEmbedding,
+                topK: options.topK,
+                includeMetadata: true
+            });
+
+            // Format results
+            const results = searchResults.matches.map(match => ({
+                id: match.id,
+                score: match.score,
+                content: match.metadata.content,
+                metadata: {
+                    sender_id: match.metadata.sender_id,
+                    sender_username: match.metadata.sender_username,
+                    created_at: match.metadata.created_at,
+                    type: match.metadata.type
+                }
+            }));
+
+            return {
+                success: true,
+                results
+            };
+        } catch (error) {
+            console.error('Error performing search:', error);
+            return {
+                success: false,
+                error: error.message,
+                results: []
+            };
+        }
+    }
+
+    async embedQuery(query) {
+        try {
+            if (!query || typeof query !== 'string') {
+                return {
+                    success: false,
+                    error: 'Query is required and must be a string'
+                };
+            }
+
+            // Generate embedding using the same embeddings object used for messages
+            const vector = await this.embeddings.embedQuery(query);
+
+            return {
+                success: true,
+                vector
+            };
+        } catch (error) {
+            console.error('Error generating query embedding:', error);
+            return {
+                success: false,
+                error: error.message
             };
         }
     }

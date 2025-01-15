@@ -5,7 +5,9 @@
 
 import express from 'express';
 import { authenticateJWT } from '../middleware/auth.js';
+import { ragQueryLimiter } from '../middleware/rateLimit.js';
 import ragService from '../services/ragService.js';
+import ragController from '../controllers/ragController.js';
 
 const router = express.Router();
 
@@ -113,55 +115,13 @@ router.get('/vectorstore/index', async (req, res) => {
  * @route GET /api/rag/vectorstore/stats
  * @description Get vector store statistics
  */
-router.get('/vectorstore/stats', async (req, res) => {
-    try {
-        const stats = await ragService.getVectorStoreStats();
-        res.json(stats);
-    } catch (error) {
-        console.error('Error getting vector store stats:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to get vector store stats',
-            details: error.message
-        });
-    }
-});
+router.get('/vectorstore/stats', (req, res) => ragController.getVectorStoreStats(req, res));
 
 /**
  * @route POST /api/rag/vectorstore/upsert
  * @description Upsert vectors into the vector store
  */
-router.post('/vectorstore/upsert', async (req, res) => {
-    try {
-        const { messages } = req.body;
-        
-        if (!messages || !Array.isArray(messages)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid request: messages array is required'
-            });
-        }
-
-        // First generate embeddings
-        const messagesWithEmbeddings = await ragService.generateEmbeddings(messages);
-        
-        // Then upsert to vector store
-        const upsertResult = await ragService.upsertVectors(messagesWithEmbeddings);
-        
-        res.json({
-            success: true,
-            ...upsertResult,
-            embeddingStatus: ragService.getEmbeddingStatus()
-        });
-    } catch (error) {
-        console.error('Error upserting vectors:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to upsert vectors',
-            details: error.message
-        });
-    }
-});
+router.post('/vectorstore/upsert', (req, res) => ragController.upsertVectors(req, res));
 
 /**
  * @route GET /api/rag/vectorstore/vectors/random
@@ -201,6 +161,149 @@ router.get('/vectorstore/vectors/:id', async (req, res) => {
             success: false,
             error: 'Failed to fetch vector',
             details: error.message
+        });
+    }
+});
+
+/**
+ * @route POST /api/rag/ask
+ * @description Process a user's question using RAG to generate a contextually informed answer
+ */
+router.post('/ask', async (req, res) => {
+    try {
+        const { query } = req.body;
+        
+        if (!query || typeof query !== 'string' || query.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid or missing query'
+            });
+        }
+
+        // 1. Embed the query
+        const embeddingResult = await ragService.embedQuery(query);
+        if (!embeddingResult.success) {
+            return res.status(400).json({
+                success: false,
+                error: embeddingResult.error
+            });
+        }
+
+        // 2. Search for similar chunks
+        const searchResult = await ragService.searchSimilarChunks(embeddingResult.vector, {
+            topK: 5,
+            minScore: 0.7
+        });
+        if (!searchResult.success) {
+            return res.status(400).json({
+                success: false,
+                error: searchResult.error
+            });
+        }
+
+        // 3. Construct the prompt
+        const promptResult = await ragService.constructPrompt(query, searchResult.matches);
+        if (!promptResult.success) {
+            return res.status(400).json({
+                success: false,
+                error: promptResult.error
+            });
+        }
+
+        // Return the results
+        res.status(200).json({
+            success: true,
+            metadata: {
+                query,
+                timestamp: new Date().toISOString(),
+                embeddingDimensions: embeddingResult.vector.length,
+                searchStats: searchResult.metadata,
+                promptStats: promptResult.metadata
+            },
+            matches: searchResult.matches,
+            prompt: promptResult.prompt
+        });
+    } catch (error) {
+        console.error('Error processing RAG query:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error while processing query'
+        });
+    }
+});
+
+// Check which messages have been upserted
+router.get('/vectorstore/check-upserted', authenticateJWT, async (req, res) => {
+    try {
+        const result = await ragController.checkUpsertedMessages(req, res);
+        res.json(result);
+    } catch (error) {
+        console.error('Error checking upserted messages:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to check upserted messages'
+        });
+    }
+});
+
+// Import documents as messages
+router.post('/documents/import', authenticateJWT, async (req, res) => {
+    try {
+        const { documents } = req.body;
+        if (!documents || !Array.isArray(documents)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid request: documents array required'
+            });
+        }
+        const result = await ragController.importDocuments(req, res);
+        res.json(result);
+    } catch (error) {
+        console.error('Error importing documents:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to import documents'
+        });
+    }
+});
+
+// Upsert all pending messages
+router.post('/vectorstore/upsert-pending', authenticateJWT, async (req, res) => {
+    try {
+        const result = await ragController.upsertPendingMessages(req, res);
+        res.json(result);
+    } catch (error) {
+        console.error('Error upserting pending messages:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to upsert pending messages'
+        });
+    }
+});
+
+// Search endpoint
+router.post('/search', async (req, res) => {
+    try {
+        const { query } = req.body;
+        
+        // Validate input
+        if (!query || typeof query !== 'string') {
+            return res.status(400).json({
+                success: false,
+                error: 'Query is required and must be a string'
+            });
+        }
+
+        // Perform search
+        const result = await ragService.search(query);
+        
+        // Return results
+        res.json(result);
+    } catch (error) {
+        console.error('Error in search endpoint:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
         });
     }
 });
