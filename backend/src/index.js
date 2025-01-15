@@ -27,6 +27,7 @@ import reactionRoutes from './routes/reactions.js';
 import fileRoutes from './routes/files.js';
 import ragRoutes from './routes/rag.js';
 import { authenticateJWT } from './middleware/auth.js';
+import testRoutes from './routes/test.js';
 
 dotenv.config();
 
@@ -35,17 +36,26 @@ const PORT = process.env.PORT || 3000;
 
 // CORS configuration
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'localhost:5173',
+    origin: [
+        process.env.FRONTEND_URL,
+        'https://chatgeniusv3-frontend-j1p5ub8ts-ryan-herons-projects.vercel.app',
+        'localhost:5173'
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['Authorization'],
-    credentials: true
+    credentials: true,
+    optionsSuccessStatus: 204
 };
+
 
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(passport.initialize());
+
+// Enable pre-flight requests for all routes
+app.options('*', cors(corsOptions));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -55,6 +65,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/reactions', reactionRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/rag', ragRoutes);
+app.use('/api/test', testRoutes);
 
 // Protected route example
 app.get('/api/protected', authenticateJWT, (req, res) => {
