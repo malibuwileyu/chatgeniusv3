@@ -1,11 +1,10 @@
+/scripts
 node_modules
 .env
-.env.local
-.env.development
-.env.production
-.env.test
-.env.staging
-.env.development.local
-.env.production.local
-.env.test.local
-.env.staging.local
+
+# AWS files
+AWSCLIV2.pkg
+*.pem
+
+# Environment files
+server/.env.server
