@@ -221,7 +221,7 @@ function Header({ onLogout = () => { } }) {
                             </button>
 
                             {showStatusMenu && (
-                                <div className="absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-[#1a1a1a] ring-1 ring-black ring-opacity-5">
+                                <div className="absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-[#1a1a1a] ring-1 ring-black ring-opacity-5 z-50">
                                     <div className="py-1" role="menu">
                                         <button
                                             onClick={() => handleStatusChange('auto')}

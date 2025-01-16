@@ -77,8 +77,8 @@ function CreateChannelModal({ isOpen, onClose, onChannelCreated }) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-[#1a1a1a] rounded-lg shadow-xl w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-[#1a1a1a] rounded-lg shadow-xl w-full max-w-md relative z-[51]">
                 <div className="p-6">
                     <h2 className="text-xl font-semibold mb-4 text-white">Create New Channel</h2>
                     <form onSubmit={handleSubmit}>

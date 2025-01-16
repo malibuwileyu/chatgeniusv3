@@ -171,63 +171,33 @@ router.get('/vectorstore/vectors/:id', async (req, res) => {
  */
 router.post('/ask', async (req, res) => {
     try {
+        console.log('Endpoint called: POST /api/rag/ask');
+        console.log('Request headers:', req.headers);
+        console.log('Request body:', req.body);
+        
         const { query } = req.body;
         
         if (!query || typeof query !== 'string' || query.trim().length === 0) {
+            console.log('Invalid query:', query);
             return res.status(400).json({
                 success: false,
                 error: 'Invalid or missing query'
             });
         }
 
-        // 1. Embed the query
-        const embeddingResult = await ragService.embedQuery(query);
-        if (!embeddingResult.success) {
-            return res.status(400).json({
-                success: false,
-                error: embeddingResult.error
-            });
-        }
-
-        // 2. Search for similar chunks
-        const searchResult = await ragService.performSimilaritySearch(query);
-        if (!searchResult.success) {
-            return res.status(400).json({
-                success: false,
-                error: searchResult.error
-            });
-        }
-
-        // 3. Construct the prompt
-        const promptResult = await ragService.constructPrompt(query, searchResult.results);
-        if (!promptResult.success) {
-            return res.status(400).json({
-                success: false,
-                error: promptResult.error
-            });
-        }
-
-        // 4. Send to OpenAI and get response
-        const openaiResult = await ragService.sendToOpenAI(promptResult.messages);
-        if (!openaiResult.success) {
-            return res.status(400).json({
-                success: false,
-                error: openaiResult.error
-            });
-        }
-
-        // Return the results
-        res.status(200).json({
+        // Return hardcoded response for testing
+        const response = {
             success: true,
-            answer: openaiResult.answer,
+            answer: "Hello! I'm the AI assistant. I see you're trying to chat with me. This is a test response to confirm the messaging system is working.",
             metadata: {
                 query,
                 timestamp: new Date().toISOString(),
-                searchStats: searchResult.metadata,
-                promptStats: promptResult.metadata,
-                openaiStats: openaiResult.metadata
+                endpoint: 'POST /api/rag/ask'
             }
-        });
+        };
+        console.log('Sending response:', response);
+        return res.status(200).json(response);
+
     } catch (error) {
         console.error('Error processing RAG query:', error);
         res.status(500).json({

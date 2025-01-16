@@ -29,6 +29,7 @@ import fileRoutes from './routes/files.js';
 import ragRoutes from './routes/rag.js';
 import { authenticateJWT } from './middleware/auth.js';
 import './cron/reembedding.js'; // Import cron job
+import './services/messageListenerService.js'; // Import message listener
 
 dotenv.config();
 

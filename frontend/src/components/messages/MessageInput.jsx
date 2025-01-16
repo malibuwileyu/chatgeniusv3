@@ -24,6 +24,8 @@ function MessageInput({ channelId, dmId }) {
                 // Strip the @AI prefix and send to AI
                 const query = message.replace(/^@ai\s*/i, '').trim();
                 
+                console.log('Sending AI query:', query);
+                
                 // First insert the user's query as a message
                 const { error: queryError } = await supabase
                     .from('messages')
@@ -38,10 +40,12 @@ function MessageInput({ channelId, dmId }) {
                 if (queryError) throw queryError;
 
                 // Send to AI endpoint
+                console.log('Making API call to /rag/ask');
                 const { data } = await api.post('/rag/ask', { query });
+                console.log('AI response:', data);
 
-                if (!data || !data.success) {
-                    throw new Error(data?.error || 'Failed to get AI response');
+                if (!data?.answer) {
+                    throw new Error('No response received from AI');
                 }
 
                 // Insert AI's response as a system message

@@ -68,7 +68,7 @@ function BookmarkedMessages({ isOpen, onClose }) {
         }}>
             <div className="flex items-center justify-center min-h-screen px-4">
                 <div className="fixed inset-0 bg-black opacity-50" onClick={onClose}></div>
-                <div className="relative bg-[#1a1a1a] rounded-lg w-full max-w-2xl">
+                <div className="relative bg-[#1a1a1a] rounded-lg w-full max-w-2xl z-[51]">
                     <div className="p-4">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-semibold text-white">Bookmarked Messages</h2>
