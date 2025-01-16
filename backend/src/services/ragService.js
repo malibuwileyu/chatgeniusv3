@@ -47,6 +47,7 @@ import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { Pinecone } from '@pinecone-database/pinecone';
 import fetch from 'node-fetch';
+import OpenAI from 'openai';
 
 // Load environment variables
 dotenv.config();
@@ -82,6 +83,11 @@ class RAGService {
         this.embeddings = new OpenAIEmbeddings({
             modelName: "text-embedding-3-large",
             openAIApiKey: process.env.OPENAI_API_KEY,
+        });
+
+        // Initialize OpenAI client for chat completions
+        this.openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY
         });
 
         // Initialize Pinecone client
@@ -576,6 +582,330 @@ class RAGService {
             };
         }
     }
+
+    /**
+     * Performs a similarity search in the vector store using the provided query
+     * @param {string} query - The search query
+     * @param {Object} options - Search options
+     * @param {number} options.topK - Number of results to return (default: 5)
+     * @returns {Promise<{success: boolean, results?: Array<{id: string, score: number, content: string}>, error?: string}>}
+     */
+    async performSimilaritySearch(query, options = { topK: 5 }) {
+        try {
+            // Input validation
+            if (!query || typeof query !== 'string' || query.trim().length === 0) {
+                return { 
+                    success: false, 
+                    error: 'Invalid query. Please provide a non-empty search term.',
+                    results: []
+                };
+            }
+
+            // Length validation
+            if (query.length > 5000) {
+                return {
+                    success: false,
+                    error: 'Query too long. Please try a shorter search term.',
+                    results: []
+                };
+            }
+
+            // Generate embedding for the query
+            const queryEmbedding = await this.embedQuery(query);
+            if (!queryEmbedding.success) {
+                return { 
+                    success: false, 
+                    error: 'Failed to process query. Please try again.',
+                    details: queryEmbedding.error,
+                    results: []
+                };
+            }
+
+            // Search in vector store with timeout
+            let searchResults;
+            try {
+                searchResults = await Promise.race([
+                    this.index.query({
+                vector: queryEmbedding.vector,
+                topK: options.topK,
+                includeMetadata: true
+                    }),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Search timeout')), 10000)
+                    )
+                ]);
+
+                // Ensure searchResults.matches is always defined
+                if (!searchResults || !searchResults.matches) {
+                    return {
+                        success: true,
+                        message: 'No relevant results found.',
+                        results: []
+                    };
+                }
+            } catch (error) {
+                if (error.message === 'Search timeout') {
+                    return {
+                        success: false,
+                        error: 'Search took too long. Please try again.',
+                        results: []
+                    };
+                }
+                return {
+                    success: false,
+                    error: 'Search failed. Please try again later.',
+                    details: error.message,
+                    results: []
+                };
+            }
+
+            // Format results
+            if (searchResults.matches.length === 0) {
+                return {
+                    success: true,
+                    message: 'No relevant results found.',
+                    results: []
+                };
+            }
+
+            // Filter results by minimum similarity threshold
+            const MIN_SIMILARITY_THRESHOLD = 0.5;
+            const relevantResults = searchResults.matches
+                .filter(match => match.score >= MIN_SIMILARITY_THRESHOLD)
+                .map(match => ({
+                id: match.id,
+                score: match.score,
+                content: match.metadata.content
+            }));
+
+            // If no results meet the threshold, return empty results
+            if (relevantResults.length === 0) {
+                return {
+                    success: true,
+                    message: 'No sufficiently relevant results found.',
+                    results: []
+                };
+            }
+
+            return {
+                success: true,
+                results: relevantResults
+            };
+        } catch (error) {
+            console.error('Error in performSimilaritySearch:', error);
+            
+            // Handle specific error types
+            if (error.message === 'Search timeout') {
+                return {
+                    success: false,
+                    error: 'Search took too long. Please try again.',
+                    results: []
+                };
+            }
+            if (error.code === 'rate_limit_exceeded') {
+                return await this.retryWithBackoff(() => this.performSimilaritySearch(query, options));
+            }
+
+            // Generic error
+            return { 
+                success: false, 
+                error: 'Search failed. Please try again later.',
+                details: error.message,
+                results: []
+            };
+        }
+    }
+
+    // Helper method for exponential backoff retry
+    async retryWithBackoff(operation, maxRetries = 3, baseDelay = 1000) {
+        let retries = 0;
+        while (retries < maxRetries) {
+            try {
+                return await operation();
+            } catch (error) {
+                retries++;
+                if (retries === maxRetries) {
+                    throw error;
+                }
+                const delay = baseDelay * Math.pow(2, retries - 1);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+
+    /**
+     * Constructs a prompt for the LLM using retrieved context chunks and a user query.
+     * @param {Array} chunks - Array of chunks with metadata from similarity search
+     * @param {string} query - The user's question
+     * @returns {string} The constructed prompt
+     * @throws {Error} If chunks array is empty or query is invalid
+     */
+    constructPrompt(chunks, query) {
+        if (!chunks || chunks.length === 0) {
+            throw new Error('No context chunks provided for prompt construction');
+        }
+        if (!query || typeof query !== 'string') {
+            throw new Error('Invalid or missing query');
+        }
+
+        // Format each chunk with metadata
+        const formattedChunks = chunks.map(chunk => {
+            const { content, sender, created_at } = chunk.metadata;
+            const timestamp = new Date(created_at).toLocaleString();
+            return `[${sender.username} at ${timestamp}]: ${content}`;
+        }).join('\n');
+
+        // Construct the final prompt
+        return `Context from previous messages:
+${formattedChunks}
+
+Based on the above context, please answer the following question:
+${query}
+
+Please only use information from the provided context. If you cannot answer the question using only the context provided, say so.`;
+    }
+
+    /**
+     * Constructs a chat-based prompt array for the LLM using retrieved context chunks and a user query.
+     * @param {Array} chunks - Array of chunks with metadata from similarity search
+     * @param {string} query - The user's question
+     * @returns {Array} Array of chat messages in the format expected by OpenAI's chat completion API
+     * @throws {Error} If chunks array is empty or query is invalid
+     */
+    constructChatPrompt(chunks, query) {
+        if (!chunks || chunks.length === 0) {
+            throw new Error('No context chunks provided for chat prompt construction');
+        }
+        if (!query || typeof query !== 'string') {
+            throw new Error('Invalid or missing query');
+        }
+
+        // Format context block
+        const contextBlock = chunks.map(chunk => {
+            const { content, sender, created_at } = chunk.metadata;
+            const timestamp = new Date(created_at).toLocaleString();
+            return `[${sender.username} at ${timestamp}]: ${content}`;
+        }).join('\n');
+
+        // Construct chat messages array
+        return [
+            {
+                role: "system",
+                content: "You are a helpful assistant that answers questions based on the provided chat context. Only use information from the context provided. If you cannot answer the question using only the context provided, say so."
+            },
+            {
+                role: "user",
+                content: `Context from previous messages:\n${contextBlock}\n\nBased on this context, please answer: ${query}`
+            }
+        ];
+    }
+
+    /**
+     * Sends a chat prompt to OpenAI and returns the generated response.
+     * @param {Array} messages - Array of chat messages in OpenAI format
+     * @param {Object} options - Optional parameters for the completion
+     * @param {string} options.model - Model to use (default: "gpt-3.5-turbo")
+     * @param {number} options.temperature - Temperature for sampling (default: 0.7)
+     * @param {number} options.max_tokens - Maximum tokens to generate (default: 500)
+     * @returns {Promise<string>} The generated response text
+     * @throws {Error} If messages array is invalid or OpenAI API call fails
+     */
+    async sendToOpenAI(messages, options = {}) {
+        if (!messages || !Array.isArray(messages) || messages.length === 0) {
+            return {
+                success: false,
+                error: 'Invalid or missing messages array'
+            };
+        }
+
+        const defaultOptions = {
+            model: "gpt-3.5-turbo",
+            temperature: 0.7,
+            max_tokens: 500
+        };
+
+        try {
+            const completion = await this.openai.chat.completions.create({
+                ...defaultOptions,
+                ...options,
+                messages
+            });
+
+            if (!completion.choices || completion.choices.length === 0) {
+                return {
+                    success: false,
+                    error: 'No completion choices returned'
+                };
+            }
+
+            return {
+                success: true,
+                content: completion.choices[0].message.content,
+                usage: completion.usage
+            };
+        } catch (error) {
+            // Handle specific OpenAI error types
+            if (error.code === 'rate_limit_exceeded') {
+                // Implement exponential backoff retry
+                return await this.retryWithBackoff(() => this.sendToOpenAI(messages, options));
+            }
+            if (error.code === 'context_length_exceeded') {
+                return {
+                    success: false,
+                    error: 'Query too long. Please try a shorter question.',
+                    details: error.message
+                };
+            }
+            if (error.code === 'invalid_api_key') {
+                console.error('OpenAI API key is invalid or expired');
+                return {
+                    success: false,
+                    error: 'Service configuration error. Please try again later.',
+                    details: error.message
+                };
+            }
+
+            // Generic error handling
+            console.error('Error in OpenAI chat completion:', error);
+            return {
+                success: false,
+                error: 'Failed to generate response. Please try again.',
+                details: error.message
+            };
+        }
+    }
+
+    /**
+     * Formats the response from OpenAI into a standardized format
+     * @param {Object} openAIResponse - The raw response from OpenAI
+     * @param {Object} metadata - Additional metadata to include in the response
+     * @returns {Object} Formatted response with answer and metadata
+     * @throws {Error} If response is invalid or missing required fields
+     */
+    formatResponse(openAIResponse, metadata = {}) {
+        if (!openAIResponse || !openAIResponse.choices || !openAIResponse.choices[0]) {
+            throw new Error('Invalid OpenAI response format');
+        }
+
+        const { message } = openAIResponse.choices[0];
+        if (!message || !message.content) {
+            throw new Error('Response missing required content');
+        }
+
+        return {
+            answer: message.content.trim(),
+            metadata: {
+                model: openAIResponse.model,
+                created: openAIResponse.created,
+                promptTokens: openAIResponse.usage?.prompt_tokens,
+                completionTokens: openAIResponse.usage?.completion_tokens,
+                totalTokens: openAIResponse.usage?.total_tokens,
+                ...metadata
+            }
+        };
+    }
 }
 
+// Export both the class and a default instance
+export { RAGService };
 export default new RAGService(); 

@@ -190,10 +190,7 @@ router.post('/ask', async (req, res) => {
         }
 
         // 2. Search for similar chunks
-        const searchResult = await ragService.searchSimilarChunks(embeddingResult.vector, {
-            topK: 5,
-            minScore: 0.7
-        });
+        const searchResult = await ragService.performSimilaritySearch(query);
         if (!searchResult.success) {
             return res.status(400).json({
                 success: false,
@@ -202,7 +199,7 @@ router.post('/ask', async (req, res) => {
         }
 
         // 3. Construct the prompt
-        const promptResult = await ragService.constructPrompt(query, searchResult.matches);
+        const promptResult = await ragService.constructPrompt(query, searchResult.results);
         if (!promptResult.success) {
             return res.status(400).json({
                 success: false,
@@ -210,18 +207,26 @@ router.post('/ask', async (req, res) => {
             });
         }
 
+        // 4. Send to OpenAI and get response
+        const openaiResult = await ragService.sendToOpenAI(promptResult.messages);
+        if (!openaiResult.success) {
+            return res.status(400).json({
+                success: false,
+                error: openaiResult.error
+            });
+        }
+
         // Return the results
         res.status(200).json({
             success: true,
+            answer: openaiResult.answer,
             metadata: {
                 query,
                 timestamp: new Date().toISOString(),
-                embeddingDimensions: embeddingResult.vector.length,
                 searchStats: searchResult.metadata,
-                promptStats: promptResult.metadata
-            },
-            matches: searchResult.matches,
-            prompt: promptResult.prompt
+                promptStats: promptResult.metadata,
+                openaiStats: openaiResult.metadata
+            }
         });
     } catch (error) {
         console.error('Error processing RAG query:', error);
@@ -304,6 +309,34 @@ router.post('/search', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Internal server error'
+        });
+    }
+});
+
+/**
+ * @route GET /api/rag/reembedding/status
+ * @description Get the status of the re-embedding cron job
+ */
+router.get('/reembedding/status', authenticateJWT, async (req, res) => {
+    try {
+        const { getJobStatus } = await import('../cron/reembedding.js');
+        const status = getJobStatus();
+
+        // Get vector store stats
+        const vectorStoreStats = await ragService.getVectorStoreStatus();
+
+        res.json({
+            success: true,
+            jobStatus: status,
+            vectorStore: vectorStoreStats,
+            lastCheck: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error getting re-embedding status:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to get re-embedding status',
+            details: error.message
         });
     }
 });

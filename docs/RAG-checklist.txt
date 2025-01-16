@@ -59,34 +59,36 @@ Below is a more detailed breakdown of Steps 1 and 2, including every small task 
 
 2. Embed the User's Query (Using LangChain)  
    - [x] Embed the user's query (using LangChain) (2024-01-15 20:25 EST)
-   - [x] Keep the pipeline consistent with earlier configuration (same model, dimensions, etc.) (2024-01-15 20:35 EST)
+   - [x] Keep the pipeline consistent with earlier configuration (2024-01-15 21:00 EST)
 
 3. Perform a Similarity Search in the Vector DB  
-   - [ ] Task 1: Request the most relevant chunks using similarity search methods
-   - [ ] Task 2: Construct a prompt for the LLM using the retrieved chunks
+   - [x] Task 1: Request the most relevant chunks using similarity search methods (2024-01-15 20:45 EST)
+   - [x] Task 2: Construct a prompt for the LLM using the retrieved chunks (2024-03-19 16:15 EST)
 
 4. Construct a Prompt for the LLM  
-   - [ ] Task 1: Combine retrieved content into a "context block"
-   - [ ] Task 2: Append the user's query after that context, ensuring the AI sees the relevant background
-   - [ ] If using chat-based requests, structure them accordingly; otherwise, keep it a single prompt string
+   - [x] Task 1: Combine retrieved content into a "context block" (2024-03-19 16:30 EST)
+   - [x] Task 2: Append the user's query after that context, ensuring the AI sees the relevant background (2024-03-19 16:30 EST)
+   - [x] Task 3: Structure the prompt for chat-based requests (2024-03-19 16:30 EST)
 
 5. Send the Prompt to OpenAI (Using LangChain)  
-   - [ ] Provide any model parameters (model name, temperature, max tokens).  
-   - [ ] Use your LangChain chain or direct LLM calls to process the combined context and user question.
+   - [x] Task 1: Provide model parameters (model name, temperature, max tokens) (2024-03-19 16:45 EST)
+   - [x] Task 2: Use LangChain chain or direct LLM calls to process the combined context and user question (2024-03-19 16:45 EST)
 
 6. Parse and Return the Answer  
-   - [ ] Extract the full text from the LLM's response.  
-   - [ ] Return it as JSON (e.g., { answer: "..." }) to the calling UI or service.  
-   - [ ] Handle any errors or fallback paths gracefully.
+   - [x] Extract the full text from the LLM's response. (2024-03-19 17:00 EST)
+   - [x] Return it as JSON (e.g., { answer: "..." }) to the calling UI or service. (2024-03-19 17:15 EST)
+   - [x] Handle errors or fallback paths gracefully (2024-03-19 16:45 EST) 
 
 7. Implement Continuous Re-embedding Process
-   - [ ] Add last_embedded_at timestamp column to messages table
-   - [ ] Update embedMessages.js to track and use last embedding timestamp
-   - [ ] Set up 5-minute cron job for checking and embedding new messages
-   - [ ] Implement monitoring and alerts for embedding process
-   - [ ] Test re-embedding with new messages before UI integration
+   - [x] Add last_embedded_at timestamp column to messages table (2024-03-19 17:00 EST)
+   - [x] Update embedMessages.js to track and use last embedding timestamp (2024-03-19 17:05 EST)
+   - [x] Set up 5-minute cron job for checking and embedding new messages (2024-03-19 17:15 EST)
+   - [x] Implement monitoring and alerts for embedding process (2024-03-19 17:20 EST)
+   - [x] Test re-embedding with new messages before UI integration (2024-03-19 17:45 EST)
 
 8. Integrate into Your UI  
+   - [x] Create AI user and automatic DM setup (2024-03-19 18:00 EST)
+   - [x] Add channel settings for AI access (2024-03-19 18:00 EST)
    - [ ] In the client (frontend), create or update a function to call /api/ask with the user's query.  
    - [ ] Display the returned answer.  
    - [ ] Provide loading states or error messages as needed.

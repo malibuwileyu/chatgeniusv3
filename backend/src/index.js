@@ -10,6 +10,7 @@
  * - Passport authentication integration
  * - API route mounting
  * - Protected route middleware implementation
+ * - Scheduled re-embedding process
  * 
  * @version 1.0.0
  * @created 2024-01-14
@@ -27,6 +28,7 @@ import reactionRoutes from './routes/reactions.js';
 import fileRoutes from './routes/files.js';
 import ragRoutes from './routes/rag.js';
 import { authenticateJWT } from './middleware/auth.js';
+import './cron/reembedding.js'; // Import cron job
 
 dotenv.config();
 
@@ -66,6 +68,7 @@ const server = app.listen(PORT, () => {
         console.log('Server started for testing');
     } else {
         console.log(`Server running on port ${PORT}`);
+        console.log('Re-embedding cron job started');
     }
 });
 

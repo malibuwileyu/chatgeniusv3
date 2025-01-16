@@ -42,6 +42,14 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const AI_USER_ID = '00000000-0000-0000-0000-000000000000';
+const WELCOME_MESSAGE = `Hi! I'm your ChatGenius AI assistant. I can help you with:
+- Answering questions about past conversations
+- Drafting messages based on context
+- Providing summaries of discussions
+
+Feel free to ask me anything! I'll use my knowledge of your chat history to provide relevant and helpful responses.`;
+
 class UserService {
     async createUser({ id, username, firstName, lastName, imageUrl }) {
         try {
@@ -88,15 +96,35 @@ class UserService {
                 .limit(1)
                 .single();
 
-            if (error) {
-                console.error('Error creating user:', error);
-                throw new Error(`Error creating user: ${error.message}`);
-            }
+            if (error) throw error;
 
-            console.log('Created new user:', newUser);
+            // Create DM with AI user
+            const { data: dm, error: dmError } = await supabase
+                .from('direct_messages')
+                .insert({
+                    member_ids: [id, AI_USER_ID],
+                    created_by: AI_USER_ID
+                })
+                .select()
+                .single();
+
+            if (dmError) throw dmError;
+
+            // Send welcome message
+            const { error: msgError } = await supabase
+                .from('messages')
+                .insert({
+                    sender_id: AI_USER_ID,
+                    content: WELCOME_MESSAGE,
+                    dm_id: dm.id,
+                    type: 'system'
+                });
+
+            if (msgError) throw msgError;
+
             return newUser;
         } catch (error) {
-            console.error('UserService error:', error);
+            console.error('Error in createUser:', error);
             throw error;
         }
     }

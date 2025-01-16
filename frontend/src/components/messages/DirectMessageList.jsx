@@ -50,14 +50,20 @@ function DirectMessageList({ onDMSelect, selectedDMId }) {
     const currentUser = getUser();
 
     useEffect(() => {
+        if (!currentUser?.id) {
+            console.log('No current user ID, skipping DM subscription');
+            return;
+        }
+
+        console.log('Loading DMs for user:', currentUser.id);
         loadDirectMessages();
 
         // Subscribe to changes in direct_message_members table
         const channel = supabase
-            .channel('direct-messages-changes')
+            .channel(`direct-messages-${currentUser.id}`)
             .on('postgres_changes',
                 {
-                    event: '*',  // Listen to all events
+                    event: '*',
                     schema: 'public',
                     table: 'direct_message_members',
                     filter: `user_id=eq.${currentUser.id}`
@@ -74,23 +80,28 @@ function DirectMessageList({ onDMSelect, selectedDMId }) {
                 console.log('Successfully subscribed to direct messages changes');
             } else if (status === 'CHANNEL_ERROR') {
                 console.error('Channel subscription error:', err);
-                // Attempt to resubscribe after a delay
-                setTimeout(() => {
-                    console.log('Attempting to resubscribe...');
-                    channel.subscribe();
-                }, 5000);
+                // Only attempt to resubscribe if we still have a valid user
+                if (currentUser?.id) {
+                    setTimeout(() => {
+                        console.log('Attempting to resubscribe...');
+                        channel.subscribe();
+                    }, 5000);
+                }
             } else if (status === 'TIMED_OUT') {
                 console.error('Channel subscription timed out');
-                // Attempt to resubscribe immediately
-                channel.subscribe();
+                // Only attempt to resubscribe if we still have a valid user
+                if (currentUser?.id) {
+                    channel.subscribe();
+                }
             }
         });
 
         return () => {
             console.log('Cleaning up DM subscription');
+            channel.unsubscribe();
             supabase.removeChannel(channel);
         };
-    }, [currentUser.id]); // Add currentUser.id as dependency
+    }, [currentUser?.id]); // Only re-run if the user ID changes
 
     const loadDirectMessages = async () => {
         try {
