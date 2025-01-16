@@ -97,6 +97,27 @@ class UserService {
         this.isAutoMode = false;
         clearTimeout(this.autoStatusTimeoutId);
     }
+
+    async setAIStatus() {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .update({ status: 'online' })
+                .eq('id', '00000000-0000-0000-0000-000000000000')
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error updating AI status:', error);
+                throw error;
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Failed to update AI status:', error);
+            throw error;
+        }
+    }
 }
 
 const userService = new UserService();
