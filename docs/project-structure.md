@@ -4,13 +4,6 @@
 ├── config/
 │ ├── database.js
 │ └── config.js
-├── controllers/
-│ ├── authController.js
-│ ├── channelController.js
-│ ├── messageController.js
-│ ├── fileController.js
-│ ├── userController.js
-│ └── reactionController.js
 ├── middleware/
 │ ├── auth.js
 │ ├── errorHandler.js
@@ -40,7 +33,7 @@
 │ ├── validation.js
 │ └── helpers.js
 ├── app.js
-└── server.js
+└── index.js
 
 /frontend
 ├── public/

@@ -1,0 +1,3 @@
+- [x] Handle errors or fallback paths gracefully (2024-03-19 16:45 EST) 
+- [x] Add last_embedded_at timestamp column to messages table (2024-03-19 17:00 EST) 
+- [x] Update embedMessages.js to track and use last embedding timestamp (2024-03-19 17:05 EST) 

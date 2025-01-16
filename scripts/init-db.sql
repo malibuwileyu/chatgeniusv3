@@ -90,6 +90,7 @@ CREATE TABLE messages (
     type VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (type IN ('user', 'system')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_embedded_at TIMESTAMP WITH TIME ZONE,
     content_tsv tsvector GENERATED ALWAYS AS (to_tsvector('message_search', content || ' ' || regexp_replace(content, '\w+', ' \0', 'g'))) STORED,
     CHECK (
         (channel_id IS NOT NULL AND dm_id IS NULL) OR
@@ -105,6 +106,11 @@ CREATE TABLE messages (
 -- Create index for message search
 CREATE INDEX messages_content_tsv_idx ON messages USING GIN (content_tsv);
 CREATE INDEX messages_content_ilike_idx ON messages USING gin (content gin_trgm_ops);
+
+-- Create index for RAG embedding tracking
+CREATE INDEX idx_messages_last_embedded_at ON messages(last_embedded_at);
+CREATE INDEX idx_messages_embedding_update ON messages(last_embedded_at, updated_at)
+WHERE last_embedded_at IS NOT NULL;
 
 -- Create trigger for message content search
 CREATE TRIGGER messages_content_update

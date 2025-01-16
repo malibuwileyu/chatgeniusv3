@@ -101,6 +101,20 @@ async function chunkMessage(message) {
 }
 
 /**
+ * Updates the last_embedded_at timestamp for successfully embedded messages
+ * @param {Array<string>} messageIds Array of message IDs to update
+ * @returns {Promise<void>}
+ */
+async function updateEmbeddingTimestamp(messageIds) {
+    const { error } = await supabase
+        .from('messages')
+        .update({ last_embedded_at: new Date().toISOString() })
+        .in('id', messageIds);
+
+    if (error) throw error;
+}
+
+/**
  * Fetches messages from the database for embedding
  * @param {Object} options Options for fetching messages
  * @returns {Promise<Array>} Array of messages with their metadata
@@ -119,6 +133,7 @@ async function fetchMessages(options = { offset: 0, limit: 100 }) {
             )
         `)
         .neq('type', 'system')
+        .or('last_embedded_at.is.null,last_embedded_at.lt.now-interval-7d')
         .order('created_at', { ascending: true })
         .range(options.offset, options.offset + options.limit - 1);
 
@@ -129,8 +144,8 @@ async function fetchMessages(options = { offset: 0, limit: 100 }) {
         id: msg.id,
         content: msg.content,
         metadata: {
-            sender_id: msg.sender.id,
-            sender_username: msg.sender.username,
+            sender_id: msg.sender?.id,
+            sender_username: msg.sender?.username,
             created_at: msg.created_at,
             type: msg.type
         }
@@ -207,6 +222,9 @@ async function main() {
                 documents,
                 flatChunks.map(chunk => chunk.id)
             );
+
+            // Update last_embedded_at timestamp
+            await updateEmbeddingTimestamp(messages.map(msg => msg.id));
 
             // Wait for indexing
             await new Promise(resolve => setTimeout(resolve, 2000));

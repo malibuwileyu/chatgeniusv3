@@ -50,14 +50,20 @@ function DirectMessageList({ onDMSelect, selectedDMId }) {
     const currentUser = getUser();
 
     useEffect(() => {
+        if (!currentUser?.id) {
+            console.log('No current user ID, skipping DM subscription');
+            return;
+        }
+
+        console.log('Loading DMs for user:', currentUser.id);
         loadDirectMessages();
 
         // Subscribe to changes in direct_message_members table
         const channel = supabase
-            .channel('direct-messages-changes')
+            .channel(`direct-messages-${currentUser.id}`)
             .on('postgres_changes',
                 {
-                    event: '*',  // Listen to all events
+                    event: '*',
                     schema: 'public',
                     table: 'direct_message_members',
                     filter: `user_id=eq.${currentUser.id}`
@@ -74,23 +80,28 @@ function DirectMessageList({ onDMSelect, selectedDMId }) {
                 console.log('Successfully subscribed to direct messages changes');
             } else if (status === 'CHANNEL_ERROR') {
                 console.error('Channel subscription error:', err);
-                // Attempt to resubscribe after a delay
-                setTimeout(() => {
-                    console.log('Attempting to resubscribe...');
-                    channel.subscribe();
-                }, 5000);
+                // Only attempt to resubscribe if we still have a valid user
+                if (currentUser?.id) {
+                    setTimeout(() => {
+                        console.log('Attempting to resubscribe...');
+                        channel.subscribe();
+                    }, 5000);
+                }
             } else if (status === 'TIMED_OUT') {
                 console.error('Channel subscription timed out');
-                // Attempt to resubscribe immediately
-                channel.subscribe();
+                // Only attempt to resubscribe if we still have a valid user
+                if (currentUser?.id) {
+                    channel.subscribe();
+                }
             }
         });
 
         return () => {
             console.log('Cleaning up DM subscription');
+            channel.unsubscribe();
             supabase.removeChannel(channel);
         };
-    }, [currentUser.id]); // Add currentUser.id as dependency
+    }, [currentUser?.id]); // Only re-run if the user ID changes
 
     const loadDirectMessages = async () => {
         try {
@@ -144,17 +155,43 @@ function DirectMessageList({ onDMSelect, selectedDMId }) {
 
     const loadAvailableUsers = async () => {
         try {
-            const { data: users, error } = await supabase
-                .from('users')
-                .select('id, username, avatar_url')
-                .neq('id', currentUser.id);
+            // First get all DMs where current user is a member
+            const { data: myDMs, error: dmError } = await supabase
+                .from('direct_message_members')
+                .select('dm_id')
+                .eq('user_id', currentUser.id);
 
-            if (error) {
-                console.error('Error loading users:', error);
+            if (dmError) {
+                console.error('Error loading DMs:', dmError);
                 return;
             }
 
-            setAvailableUsers(users);
+            // Get all users that are in DMs with current user
+            const { data: existingDMUsers, error: membersError } = await supabase
+                .from('direct_message_members')
+                .select('user_id')
+                .in('dm_id', myDMs.map(dm => dm.id))
+                .neq('user_id', currentUser.id);
+
+            if (membersError) {
+                console.error('Error loading DM members:', membersError);
+                return;
+            }
+
+            // Get all users except those who already have DMs with current user
+            const existingUserIds = new Set(existingDMUsers.map(u => u.user_id));
+            const { data: availableUsers, error: usersError } = await supabase
+                .from('users')
+                .select('id, username, avatar_url')
+                .neq('id', currentUser.id)
+                .not('id', 'in', `(${Array.from(existingUserIds).join(',')})`);
+
+            if (usersError) {
+                console.error('Error loading users:', usersError);
+                return;
+            }
+
+            setAvailableUsers(availableUsers);
         } catch (error) {
             console.error('Error in users loading:', error);
         }
@@ -289,8 +326,8 @@ function DirectMessageList({ onDMSelect, selectedDMId }) {
 
             {/* Create DM Modal */}
             {showCreateDM && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full relative z-[51]">
                         <h3 className="text-lg font-semibold mb-4">Create Direct Message</h3>
                         <div className="mb-4">
                             <div className="flex flex-wrap gap-2 mb-2">

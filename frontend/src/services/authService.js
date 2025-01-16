@@ -38,11 +38,12 @@ export const login = async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
     const { token, user } = response.data;
 
-    // Store token and user data
-    localStorage.setItem(TOKEN_KEY, token);
+    // Ensure token is stored as a single string
+    const tokenString = Array.isArray(token) ? token.join('.') : token;
+    localStorage.setItem(TOKEN_KEY, tokenString);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
 
-    return { token, user };
+    return { token: tokenString, user };
 };
 
 export const register = async (email, password, username) => {
@@ -66,7 +67,9 @@ export const logout = () => {
 };
 
 export const getToken = () => {
-    return localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
+    // Handle case where token might be stored as array
+    return Array.isArray(token) ? token.join('.') : token;
 };
 
 export const getUser = () => {

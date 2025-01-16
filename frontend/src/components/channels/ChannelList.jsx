@@ -86,7 +86,7 @@ function ChannelList({ onChannelSelect, selectedChannelId, channels, setChannels
 
                 {/* Add Options Dropdown */}
                 {showAddOptions && (
-                    <div className="absolute left-0 mt-1 w-48 rounded-md shadow-lg bg-[#1a1a1a] ring-1 ring-black ring-opacity-5">
+                    <div className="absolute left-0 mt-1 w-48 rounded-md shadow-lg bg-[#1a1a1a] ring-1 ring-black ring-opacity-5 z-50">
                         <div className="py-1" role="menu">
                             <button
                                 onClick={handleBrowseClick}
