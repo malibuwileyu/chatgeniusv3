@@ -47,8 +47,13 @@ const corsOptions = {
             'http://localhost:5173',
             'https://chatgeniusv3-frontend.vercel.app',
             'https://chatgeniusv3-frontend.vercel.app/',
-            'https://chatgeniusv3-frontend-ax5uh99o4-ryan-herons-projects.vercel.app/'
+            'https://chatgeniusv3-frontend-ax5uh99o4-ryan-herons-projects.vercel.app/',
+            'https://chatgeniusv3-frontend-.*-ryan-herons-projects.vercel.app',
+            'https://chatgeniusv3-frontend-ax5uh99o4-ryan-herons-projects.vercel.app',
+            'https://chatgeniusv3-frontend-.*-ryan-herons-projects.vercel.app/',
         ];
+        //|https://chatgeniusv3-frontend.vercel.app/|https://chatgeniusv3-frontend-ax5uh99o4-ryan-herons-projects.vercel.app/|
+        
         
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
