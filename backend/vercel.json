@@ -14,7 +14,7 @@
   ],
   "routes": [
     {
-      "src": "/api/(health|auth|messages|channels|users|reactions|files|rag)/?.*",
+      "src": "/api/(health|auth|messages|channels|users|reactions|files|rag|cron)/?.*",
       "methods": ["OPTIONS"],
       "headers": {
         "Access-Control-Allow-Origin": "https://chatgeniusv3-frontend-7p62cpqua-ryan-herons-projects.vercel.app",
@@ -26,7 +26,7 @@
       "status": 204
     },
     {
-      "src": "/api/(health|auth|messages|channels|users|reactions|files|rag)/?.*",
+      "src": "/api/(health|auth|messages|channels|users|reactions|files|rag|cron)/?.*",
       "dest": "src/index.js",
       "headers": {
         "Access-Control-Allow-Origin": "https://chatgeniusv3-frontend-7p62cpqua-ryan-herons-projects.vercel.app",

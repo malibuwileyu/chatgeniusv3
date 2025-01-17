@@ -84,7 +84,12 @@ export default async function handler(req, res) {
     // Verify the request is from Vercel Cron
     const authHeader = req.headers.authorization;
     if (!authHeader || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        return res.status(401).json({ error: 'Unauthorized no poop 4 u' });
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Only allow GET and POST methods
+    if (req.method !== 'GET' && req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const startTime = Date.now();
