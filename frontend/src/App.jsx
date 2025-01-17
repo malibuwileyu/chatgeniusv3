@@ -39,6 +39,7 @@ import Auth from './pages/Auth';
 import Chat from './components/common/Chat';
 import BrowseChannels from './pages/BrowseChannels';
 import { getToken, logout } from './services/authService';
+import userService from './services/userService';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -46,6 +47,26 @@ function App() {
   useEffect(() => {
     const token = getToken();
     setIsAuthenticated(!!token);
+
+    // Set AI user to be permanently online
+    userService.setAIStatus().catch(error => {
+      console.error('Failed to set AI status:', error);
+    });
+
+    // Subscribe to AI status changes to ensure it stays online
+    const subscription = userService.subscribeToUserStatus('00000000-0000-0000-0000-000000000000', async (status) => {
+      if (status !== 'online') {
+        try {
+          await userService.setAIStatus();
+        } catch (error) {
+          console.error('Failed to reset AI status to online:', error);
+        }
+      }
+    });
+
+    return () => {
+      subscription.then(sub => sub.unsubscribe()).catch(console.error);
+    };
   }, []);
 
   const handleLogout = () => {

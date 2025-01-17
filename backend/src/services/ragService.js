@@ -204,7 +204,8 @@ class RAGService {
             const { data: messages, error: dbError } = await supabase
                 .from('messages')
                 .select('id')
-                .neq('type', 'system');
+                .neq('type', 'system')
+                .neq('sender_id', '00000000-0000-0000-0000-000000000000'); // Exclude AI user's messages
 
             if (dbError) {
                 throw new Error(`Failed to fetch messages: ${dbError.message}`);
@@ -285,7 +286,9 @@ class RAGService {
                             username
                         )
                     `)
-                    .in('id', batchIds);
+                    .in('id', batchIds)
+                    .neq('type', 'system')
+                    .neq('sender_id', '00000000-0000-0000-0000-000000000000'); // Exclude AI user's messages
 
                 if (fetchError) {
                     throw new Error(`Failed to fetch messages: ${fetchError.message}`);
