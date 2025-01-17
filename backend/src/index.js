@@ -21,6 +21,7 @@ import ragRoutes from './routes/rag.js';
 import healthRoutes from './routes/health.js';
 import { authenticateJWT } from './middleware/auth.js';
 import cronReembedding from './api/cron/reembedding.js';
+import aiHandler from './api/messages/aiHandler.js';
 
 // Initialize development-only services
 async function initDevServices() {
@@ -82,6 +83,7 @@ app.use('/api/files', fileRoutes);
 app.use('/api/rag', ragRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/cron/reembedding', cronReembedding);
+app.use('/api/messages/ai', aiHandler);
 
 // 404 handler - for undefined routes
 app.use((req, res, next) => {
