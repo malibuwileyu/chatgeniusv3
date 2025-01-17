@@ -42,7 +42,8 @@ const corsOptions = {
         const allowedOrigins = [
             'http://localhost:5173',
             'https://chatgeniusv3-frontend.vercel.app',
-            'https://chatgeniusv3-frontend.vercel.app/'
+            'https://chatgeniusv3-frontend.vercel.app/',
+            'https://chatgeniusv3-frontend-kgu7iol8k-ryan-herons-projects.vercel.app'
         ];
         
         // Allow requests with no origin (like mobile apps or curl requests)
