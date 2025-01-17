@@ -1,7 +1,6 @@
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
-import pkg from '@pinecone-database/pinecone';
-const { PineconeClient } = pkg;
+import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAI } from 'openai';
 import os from 'os';
 
@@ -73,11 +72,12 @@ router.get('/', async (req, res) => {
             if (!process.env.PINECONE_API_KEY || !process.env.PINECONE_INDEX) {
                 throw new Error('Missing Pinecone credentials');
             }
-            const pinecone = new PineconeClient();
-            await pinecone.init({
+            const pinecone = new Pinecone({
                 apiKey: process.env.PINECONE_API_KEY,
             });
-            const indexes = await pinecone.listIndexes();
+            const index = pinecone.index(process.env.PINECONE_INDEX);
+            // Just check if we can describe the index
+            await index.describeIndexStats();
             health.services.pinecone = 'healthy';
         } catch (error) {
             health.services.pinecone = 'unhealthy';

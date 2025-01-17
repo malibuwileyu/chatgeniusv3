@@ -96,7 +96,7 @@ class RAGService {
         });
 
         // Initialize the index reference
-        this.index = this.pinecone.Index(process.env.PINECONE_INDEX);
+        this.index = this.pinecone.index(process.env.PINECONE_INDEX);
 
         // Expose Supabase client
         this.supabase = supabase;
