@@ -64,6 +64,7 @@ const corsOptions = {
             return callback(new Error(msg), false);
         }
         */
+       //i hate vercel
         return callback(null, origin);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
