@@ -6,6 +6,12 @@
       "use": "@vercel/node"
     }
   ],
+  "crons": [
+    {
+      "path": "/api/cron/reembedding",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "routes": [
     {
       "src": "/api/(health|auth|messages|channels|users|reactions|files|rag)/?.*",
