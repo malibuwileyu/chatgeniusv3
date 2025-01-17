@@ -18,6 +18,7 @@ import userRoutes from './routes/users.js';
 import reactionRoutes from './routes/reactions.js';
 import fileRoutes from './routes/files.js';
 import ragRoutes from './routes/rag.js';
+import healthRoutes from './routes/health.js';
 import { authenticateJWT } from './middleware/auth.js';
 
 // Initialize development-only services
@@ -84,6 +85,56 @@ app.use('/api/users', userRoutes);
 app.use('/api/reactions', reactionRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/rag', ragRoutes);
+app.use('/api/health', healthRoutes);
+
+// Root route handler
+app.get('/', (req, res) => {
+    res.json({
+        message: 'ChatGenius API - Use /api/health for server status',
+        endpoints: {
+            health: '/api/health',
+            auth: '/api/auth/*',
+            messages: '/api/messages/*',
+            channels: '/api/channels/*',
+            users: '/api/users/*',
+            reactions: '/api/reactions/*',
+            files: '/api/files/*',
+            rag: '/api/rag/*'
+        }
+    });
+});
+
+// 404 handler - for undefined routes
+app.use((req, res, next) => {
+    const error = new Error(`Not Found - ${req.method} ${req.originalUrl}`);
+    error.status = 404;
+    next(error);
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Error details:', {
+        message: err.message,
+        stack: err.stack,
+        status: err.status || 500,
+        path: req.path,
+        method: req.method,
+        headers: req.headers,
+        query: req.query,
+        body: req.body
+    });
+
+    res.status(err.status || 500).json({
+        error: {
+            message: err.message,
+            status: err.status || 500,
+            path: req.path,
+            method: req.method,
+            timestamp: new Date().toISOString(),
+            requestId: req.headers['x-request-id'] || 'unknown'
+        }
+    });
+});
 
 // Protected route example
 app.get('/api/protected', authenticateJWT, (req, res) => {
