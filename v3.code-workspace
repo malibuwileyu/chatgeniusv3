@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../harmony/chatgenius/ChatGenius"
+		},
+		{
+			"path": "../../../asher/ChatterBox"
+		}
+	],
+	"settings": {}
+}

@@ -312,6 +312,16 @@ router.post('/:channelId/leave', authenticateJWT, async (req, res) => {
 router.get('/:channelId', authenticateJWT, async (req, res) => {
     try {
         const { channelId } = req.params;
+        const userId = req.user.id;
+
+        // Check membership first using our new method
+        const isMember = await channelService.isChannelMember(channelId, userId);
+        if (!isMember) {
+            return res.status(403).json({ 
+                success: false,
+                message: 'Not a member of this channel' 
+            });
+        }
 
         // Get channel details with members
         const { data: channel, error } = await supabase
@@ -330,19 +340,23 @@ router.get('/:channelId', authenticateJWT, async (req, res) => {
 
         if (error) {
             console.error('Error fetching channel:', error);
-            return res.status(500).json({ message: 'Error fetching channel' });
+            return res.status(500).json({ 
+                success: false,
+                message: 'Error fetching channel' 
+            });
         }
 
-        // Check if user is a member
-        const isMember = channel.members.some(member => member.user.id === req.user.id);
-        if (!isMember) {
-            return res.status(403).json({ message: 'Not a member of this channel' });
-        }
-
-        res.json(channel);
+        res.json({
+            success: true,
+            channel
+        });
     } catch (error) {
         console.error('Error in channel retrieval:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        res.status(500).json({ 
+            success: false,
+            message: 'Internal server error',
+            details: error.message
+        });
     }
 });
 
@@ -350,8 +364,18 @@ router.get('/:channelId', authenticateJWT, async (req, res) => {
 router.put('/:channelId', authenticateJWT, async (req, res) => {
     try {
         const { channelId } = req.params;
-        const { name, description, is_private } = req.body;
         const userId = req.user.id;
+
+        // Check membership first
+        const isMember = await channelService.isChannelMember(channelId, userId);
+        if (!isMember) {
+            return res.status(403).json({ 
+                success: false,
+                message: 'Not a member of this channel' 
+            });
+        }
+
+        const { name, description, is_private } = req.body;
 
         // Check if user is the creator of the channel
         const { data: channel, error: channelError } = await supabase
@@ -409,15 +433,24 @@ router.put('/:channelId', authenticateJWT, async (req, res) => {
 router.delete('/:channelId', authenticateJWT, async (req, res) => {
     try {
         const { channelId } = req.params;
+        const userId = req.user.id;
 
-        // Check if user is channel owner
+        // Check membership first
+        const isMember = await channelService.isChannelMember(channelId, userId);
+        if (!isMember) {
+            return res.status(403).json({ 
+                success: false,
+                message: 'Not a member of this channel' 
+            });
+        }
+
+        // Then check if owner
         const { data: membership, error: membershipError } = await supabase
             .from('channel_members')
             .select('role')
             .eq('channel_id', channelId)
-            .eq('user_id', req.user.id)
-            .limit(1)
-            .single();
+            .eq('user_id', userId)
+            .maybeSingle();
 
         if (membershipError || membership.role !== 'owner') {
             return res.status(403).json({ message: 'Only channel owner can delete channel' });
@@ -438,6 +471,28 @@ router.delete('/:channelId', authenticateJWT, async (req, res) => {
     } catch (error) {
         console.error('Error in channel deletion:', error);
         res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Add new route for checking channel membership
+router.get('/:channelId/membership/:userId', authenticateJWT, async (req, res) => {
+    try {
+        const { channelId, userId } = req.params;
+        const isMember = await channelService.isChannelMember(channelId, userId);
+        
+        res.json({
+            success: true,
+            isMember,
+            channelId,
+            userId
+        });
+    } catch (error) {
+        console.error('Error checking channel membership:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to check channel membership',
+            details: error.message
+        });
     }
 });
 

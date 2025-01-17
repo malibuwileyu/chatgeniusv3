@@ -240,6 +240,33 @@ class ChannelService {
 
         if (error) throw error;
     }
+
+    /**
+     * Check if a user is a member of a specific channel
+     * @param {string} channelId - The channel ID to check
+     * @param {string} userId - The user ID to check
+     * @returns {Promise<boolean>} True if user is a member, false otherwise
+     */
+    async isChannelMember(channelId, userId) {
+        try {
+            const { data, error } = await supabase
+                .from('channel_members')
+                .select('user_id')
+                .eq('channel_id', channelId)
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (error) {
+                console.error('Error checking channel membership:', error);
+                throw error;
+            }
+
+            return !!data;
+        } catch (error) {
+            console.error('Channel member check failed:', error);
+            throw error;
+        }
+    }
 }
 
 export default new ChannelService(); 

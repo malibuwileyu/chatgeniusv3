@@ -32,6 +32,7 @@
 import express from 'express';
 import { authenticateJWT } from '../middleware/auth.js';
 import { createClient } from '@supabase/supabase-js';
+import channelService from '../services/channelService.js';
 
 const router = express.Router();
 const supabase = createClient(
@@ -449,6 +450,28 @@ router.get('/dm/:dmId', authenticateJWT, async (req, res) => {
     } catch (error) {
         console.error('Error in DM message retrieval:', error);
         res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+router.get('/:channelId/messages', authenticateJWT, async (req, res) => {
+    try {
+        const { channelId } = req.params;
+        const userId = req.user.id;
+
+        // Check channel membership first if it's a channel message
+        if (channelId) {
+            const isMember = await channelService.isChannelMember(channelId, userId);
+            if (!isMember) {
+                return res.status(403).json({ 
+                    success: false,
+                    message: 'Not a member of this channel' 
+                });
+            }
+        }
+
+        // Rest of message fetching logic...
+    } catch (error) {
+        // Error handling...
     }
 });
 

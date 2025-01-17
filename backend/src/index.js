@@ -24,7 +24,7 @@ import cronReembedding from './api/cron/reembedding.js';
 import aiHandler from './api/messages/aiHandler.js';
 
 // Initialize development-only services
-async function initDevServices() {
+/*async function initDevServices() {
     if (process.env.NODE_ENV !== 'production') {
         try {
             const [reembedding, messageListener] = await Promise.all([
@@ -36,7 +36,7 @@ async function initDevServices() {
             console.error('Error initializing development services:', error);
         }
     }
-}
+}*/
 
 dotenv.config();
 
