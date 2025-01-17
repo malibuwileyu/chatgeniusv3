@@ -1,6 +1,9 @@
 /scripts
 node_modules
 .env
+/.vercel
+.env.production
+.env.development
 
 # AWS files
 AWSCLIV2.pkg

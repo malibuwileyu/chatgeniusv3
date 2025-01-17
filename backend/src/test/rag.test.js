@@ -69,7 +69,7 @@ request.agent(baseURL);
         const pinecone = new Pinecone({
             apiKey: process.env.PINECONE_API_KEY
         });
-        const index = pinecone.Index(process.env.PINECONE_INDEX);
+        const index = pinecone.index(process.env.PINECONE_INDEX);
         await index.describeIndexStats();
         console.log('✓ Pinecone connection is working');
 
