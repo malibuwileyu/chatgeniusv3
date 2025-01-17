@@ -43,14 +43,14 @@ const PORT = process.env.PORT || 3000;
 // CORS configuration
 const corsOptions = {
     origin: (origin, callback) => {
-        const allowedOrigins = [
+        /*const allowedOrigins = [
             'http://localhost:5173',
             'https://chatgeniusv3-frontend.vercel.app',
             'https://chatgeniusv3-frontend.vercel.app/',
             'https://chatgeniusv3-frontend-ax5uh99o4-ryan-herons-projects.vercel.app/',
             'https://chatgeniusv3-frontend-.*-ryan-herons-projects.vercel.app',
             'https://chatgeniusv3-frontend-ax5uh99o4-ryan-herons-projects.vercel.app',
-            'https://chatgeniusv3-frontend-.*-ryan-herons-projects.vercel.app/',
+            'https://chatgeniusv3-frontend-.*-ryan-herons-projects.vercel.app/'
         ];
         //|https://chatgeniusv3-frontend.vercel.app/|https://chatgeniusv3-frontend-ax5uh99o4-ryan-herons-projects.vercel.app/|
         
@@ -62,7 +62,7 @@ const corsOptions = {
             const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
             return callback(new Error(msg), false);
         }
-        
+        */
         return callback(null, origin);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
