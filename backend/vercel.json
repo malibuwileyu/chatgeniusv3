@@ -11,12 +11,12 @@
       "src": "/api/(.*)",
       "methods": ["OPTIONS"],
       "headers": {
-        "Access-Control-Allow-Origin": "https://chatgeniusv3-frontend.vercel.app",
+        //"Access-Control-Allow-Origin": "https://chatgeniusv3-frontend-.*-ryan-herons-projects.vercel.app",
+        "Access-Control-Allow-Origin": "",
         "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
         "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Max-Age": "86400",
-        "Set-Cookie": "SameSite=None; Secure"
+        "Access-Control-Max-Age": "86400"
       },
       "status": 204
     },
@@ -24,11 +24,10 @@
       "src": "/api/(.*)",
       "dest": "src/index.js",
       "headers": {
-        "Access-Control-Allow-Origin": "https://chatgeniusv3-frontend.vercel.app",
+        "Access-Control-Allow-Origin": "https://chatgeniusv3-frontend-.*-ryan-herons-projects.vercel.app",
         "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
-        "Access-Control-Allow-Credentials": "true",
-        "Set-Cookie": "SameSite=None; Secure"
+        "Access-Control-Allow-Credentials": "true"
       }
     },
     {
