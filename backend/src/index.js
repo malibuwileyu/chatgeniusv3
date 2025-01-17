@@ -1,20 +1,11 @@
 /**
  * @file index.js
  * @description Main application entry point that sets up the Express server with middleware,
- * route configurations, and authentication. This file initializes core server functionality
- * including CORS, authentication middleware, and API routes for the chat application.
- * 
- * Key Features:
- * - Express server configuration
- * - CORS setup for frontend communication
- * - Passport authentication integration
- * - API route mounting
- * - Protected route middleware implementation
- * - Scheduled re-embedding process
- * 
- * @version 1.0.0
- * @created 2024-01-14
+ * route configurations, and authentication.
  */
+
+// Set LangSmith to use background callbacks
+process.env.LANGCHAIN_CALLBACKS_BACKGROUND = 'true';
 
 import express from 'express';
 import cors from 'cors';
@@ -28,8 +19,21 @@ import reactionRoutes from './routes/reactions.js';
 import fileRoutes from './routes/files.js';
 import ragRoutes from './routes/rag.js';
 import { authenticateJWT } from './middleware/auth.js';
-import './cron/reembedding.js'; // Import cron job
-import './services/messageListenerService.js'; // Import message listener
+
+// Initialize development-only services
+async function initDevServices() {
+    if (process.env.NODE_ENV !== 'production') {
+        try {
+            const [reembedding, messageListener] = await Promise.all([
+                import('./cron/reembedding.js'),
+                import('./services/messageListenerService.js')
+            ]);
+            console.log('Development services initialized: Cron job and Message Listener');
+        } catch (error) {
+            console.error('Error initializing development services:', error);
+        }
+    }
+}
 
 dotenv.config();
 
@@ -81,15 +85,11 @@ app.get('/api/protected', authenticateJWT, (req, res) => {
     res.json({ message: 'Protected route accessed successfully', user: req.user });
 });
 
-// Start server only if not being imported for tests
-const server = app.listen(PORT, () => {
-    if (process.argv[1] !== new URL(import.meta.url).pathname) {
-        console.log('Server started for testing');
-    } else {
+// Only start server if running locally
+if (process.env.NODE_ENV !== 'production') {
+    const server = app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
-        console.log('Re-embedding cron job started');
-    }
-});
-
-// Export for testing
-export { app, server }; 
+        // Initialize development services after server starts
+        initDevServices().catch(console.error);
+    });
+} 
