@@ -523,10 +523,10 @@ class RAGService {
     async search(query, options = { topK: 5 }) {
         try {
             console.log('Searching for:', query);
-
+            
             // Generate embedding for query
             const queryEmbedding = await this.embeddings.embedQuery(query);
-
+            
             // Search in vector store
             const searchResults = await this.index.query({
                 vector: queryEmbedding,
@@ -546,16 +546,16 @@ class RAGService {
             const results = searchResults.matches
                 .filter(match => match?.metadata?.content) // Only include results with valid content
                 .map(match => ({
-                    id: match.id,
-                    score: match.score,
-                    content: match.metadata.content,
-                    metadata: {
-                        sender_id: match.metadata.sender_id,
-                        sender_username: match.metadata.sender_username,
-                        created_at: match.metadata.created_at,
-                        type: match.metadata.type
-                    }
-                }));
+                id: match.id,
+                score: match.score,
+                content: match.metadata.content,
+                metadata: {
+                    sender_id: match.metadata.sender_id,
+                    sender_username: match.metadata.sender_username,
+                    created_at: match.metadata.created_at,
+                    type: match.metadata.type
+                }
+            }));
 
             return {
                 success: true,
