@@ -41,31 +41,23 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS configuration
-const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-        ? 'https://chatgeniusv3-frontend.vercel.app'
-        : ['http://localhost:5173', 'http://localhost:3000'],
+// Middleware
+app.use(cors({
+    /*origin: (origin, callback) => {
+        return callback(null, origin);
+        if (!origin) return callback(null, true);
+    },*/
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposedHeaders: ['Authorization'],
-    credentials: true
-};
-
-// Middleware
-app.use(cors(corsOptions));
+    //credentials: true
+    optionsSuccessStatus: 204
+}));
 app.use(express.json());
 app.use(passport.initialize());
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/api/channels', channelRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/reactions', reactionRoutes);
-app.use('/api/files', fileRoutes);
-app.use('/api/rag', ragRoutes);
-app.use('/api/health', healthRoutes);
 
 // Root route handler
 app.get('/', (req, res) => {
@@ -83,6 +75,15 @@ app.get('/', (req, res) => {
         }
     });
 });
+
+app.use('/api/auth', authRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/channels', channelRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/reactions', reactionRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/rag', ragRoutes);
+app.use('/api/health', healthRoutes);
 
 // 404 handler - for undefined routes
 app.use((req, res, next) => {
