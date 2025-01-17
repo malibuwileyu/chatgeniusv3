@@ -43,15 +43,11 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-    /*origin: (origin, callback) => {
-        return callback(null, origin);
-        if (!origin) return callback(null, true);
-    },*/
-    origin: '*',
+    origin: ['https://chatgeniusv3-frontend.vercel.app', 'https://chatgeniusv3-frontend-7p62cpqua-ryan-herons-projects.vercel.app/', 'http://localhost:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-    exposedHeaders: ['Authorization'],
-    //credentials: true
+    exposedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
     optionsSuccessStatus: 204
 }));
 app.use(express.json());
