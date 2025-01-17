@@ -1,6 +1,7 @@
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { PineconeClient } from '@pinecone-database/pinecone';
+import pkg from '@pinecone-database/pinecone';
+const { PineconeClient } = pkg;
 import { OpenAI } from 'openai';
 import os from 'os';
 
