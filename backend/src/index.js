@@ -43,7 +43,7 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
-    origin: ['https://chatgeniusv3-frontend.vercel.app', 'https://chatgeniusv3-frontend-7p62cpqua-ryan-herons-projects.vercel.app/', 'http://localhost:5173'],
+    origin: 'https://chatgeniusv3-frontend.vercel.app',//, 'https://chatgeniusv3-frontend-7p62cpqua-ryan-herons-projects.vercel.app/', 'http://localhost:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposedHeaders: ['Content-Type', 'Authorization'],
